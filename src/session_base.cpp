@@ -44,6 +44,7 @@
 #include "address.hpp"
 #include "norm_engine.hpp"
 #include "udp_engine.hpp"
+#include "rdma_engine.hpp"
 
 #include "ctx.hpp"
 #include "req.hpp"
@@ -460,6 +461,49 @@ void zmq::session_base_t::engine_error (
 
     if (_zap_pipe)
         _zap_pipe->check_read ();
+}
+
+void zmq::session_base_t::engine_error (
+    zmq::rdma_engine_t::error_reason_t reason_)
+{
+  //  Engine is dead. Let's forget about it.
+  _engine = NULL;
+
+  //  Remove any half-done messages from the pipes.
+  if (_pipe)
+    clean_pipes ();
+
+  zmq_assert (reason_ == rdma_engine_t::connection_error
+                  || reason_ == rdma_engine_t::timeout_error
+                  || reason_ == rdma_engine_t::protocol_error);
+
+  switch (reason_) {
+    case rdma_engine_t::timeout_error:
+      /* FALLTHROUGH */
+    case rdma_engine_t::connection_error:
+      if (_active) {
+        reconnect ();
+        break;
+      }
+      /* FALLTHROUGH */
+    case rdma_engine_t::protocol_error:
+      if (_pending) {
+        if (_pipe)
+          _pipe->terminate (false);
+        if (_zap_pipe)
+          _zap_pipe->terminate (false);
+      } else {
+        terminate ();
+      }
+      break;
+  }
+
+  //  Just in case there's only a delimiter in the pipe.
+  if (_pipe)
+    _pipe->check_read ();
+
+  if (_zap_pipe)
+    _zap_pipe->check_read ();
 }
 
 void zmq::session_base_t::process_term (int linger_)

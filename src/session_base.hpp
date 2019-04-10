@@ -37,6 +37,7 @@
 #include "pipe.hpp"
 #include "socket_base.hpp"
 #include "stream_engine.hpp"
+#include "rdma_engine.hpp"
 
 namespace zmq
 {
@@ -62,6 +63,8 @@ class session_base_t : public own_t, public io_object_t, public i_pipe_events
     void flush ();
     void rollback ();
     void engine_error (zmq::stream_engine_t::error_reason_t reason_);
+    void engine_error (zmq::rdma_engine_t::error_reason_t reason_);
+
 
     //  i_pipe_events interface implementation.
     void read_activated (zmq::pipe_t *pipe_);
