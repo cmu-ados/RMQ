@@ -96,7 +96,7 @@
 #include "gather.hpp"
 #include "scatter.hpp"
 #include "dgram.hpp"
-
+#include "rdma_listener.h"
 void zmq::socket_base_t::inprocs_t::emplace (const char *endpoint_uri_,
                                              pipe_t *pipe_)
 {
@@ -627,8 +627,8 @@ int zmq::socket_base_t::bind (const char *endpoint_uri_)
 
     // FIXME: The implementation of rdma protocol is the same as TCP for now!
     if (protocol == protocol_name::rdma) {
-        tcp_listener_t *listener =
-                new (std::nothrow) tcp_listener_t (io_thread, this, options);
+        rdma_listener_t *listener =
+                new (std::nothrow) rdma_listener_t (io_thread, this, options);
         alloc_assert (listener);
         rc = listener->set_address (address.c_str ());
         if (rc != 0) {

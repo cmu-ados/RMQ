@@ -50,6 +50,8 @@
 #include "radio.hpp"
 #include "dish.hpp"
 
+#include "rdma_connecter.hpp"
+
 zmq::session_base_t *zmq::session_base_t::create (class io_thread_t *io_thread_,
                                                   bool active_,
                                                   class socket_base_t *socket_,
@@ -679,14 +681,13 @@ zmq::own_t *zmq::session_base_t::create_connecter_rdma (io_thread_t *io_thread_,
 {
     if (!options.socks_proxy_address.empty ()) {
         address_t *proxy_address = new (std::nothrow) address_t (
-                protocol_name::tcp, options.socks_proxy_address, this->get_ctx ());
+                protocol_name::rdma, options.socks_proxy_address, this->get_ctx ());
         alloc_assert (proxy_address);
         return new (std::nothrow) socks_connecter_t (
                 io_thread_, this, options, _addr, proxy_address, wait_);
     }
-    const_cast<std::string&>(_addr->protocol) = protocol_name::tcp;
     return new (std::nothrow)
-            tcp_connecter_t (io_thread_, this, options, _addr, wait_);
+            rdma_connecter_t (io_thread_, this, options, _addr, wait_);
 }
 
 #ifdef ZMQ_HAVE_OPENPGM

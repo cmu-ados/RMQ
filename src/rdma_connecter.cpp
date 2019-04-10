@@ -40,7 +40,7 @@
 #include "ip.hpp"
 #include "tcp.hpp"
 #include "address.hpp"
-#include "rdma_address.hpp"
+#include "rdma_address.h"
 #include "session_base.hpp"
 
 #if !defined ZMQ_HAVE_WINDOWS
