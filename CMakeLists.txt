@@ -684,7 +684,10 @@ set(cxx-sources
   socks_connecter.cpp
   stream.cpp
   stream_engine.cpp
+  rdma_address.cpp
+  rdma_connecter.cpp
   rdma_engine.cpp
+  rdma_listener.cpp
   sub.cpp
   tcp.cpp
   tcp_address.cpp
@@ -798,6 +801,10 @@ set(cxx-sources
   random.hpp
   raw_decoder.hpp
   raw_encoder.hpp
+  rdma_address.hpp
+  rdma_connecter.hpp
+  rdma_engine.hpp
+  rdma_listener.hpp
   reaper.hpp
   rep.hpp
   req.hpp
@@ -814,7 +821,6 @@ set(cxx-sources
   stdint.hpp
   stream.hpp
   stream_engine.hpp
-  rdma_engine.hpp
   sub.hpp
   tcp.hpp
   tcp_address.hpp
@@ -1066,7 +1072,7 @@ else()
   # avoid building everything twice for shared + static
   # only on *nix, as Windows needs different preprocessor defines in static builds
   if(NOT MINGW)
-    add_library(objects OBJECT ${sources} src/rdma_address.h src/rdma_address.cpp src/rdma_connecter.hpp src/rdma_connecter.cpp src/rdma_listener.h src/rdma_listener.cpp)
+    add_library(objects OBJECT ${sources})
     set_property(TARGET objects PROPERTY POSITION_INDEPENDENT_CODE ON)
     target_include_directories(objects
       PUBLIC

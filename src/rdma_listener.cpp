@@ -33,7 +33,7 @@
 #include <string>
 #include <stdio.h>
 
-#include "rdma_listener.h"
+#include "rdma_listener.hpp"
 #include "stream_engine.hpp"
 #include "io_thread.hpp"
 #include "session_base.hpp"

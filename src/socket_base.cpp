@@ -96,7 +96,8 @@
 #include "gather.hpp"
 #include "scatter.hpp"
 #include "dgram.hpp"
-#include "rdma_listener.h"
+#include "rdma_listener.hpp"
+
 void zmq::socket_base_t::inprocs_t::emplace (const char *endpoint_uri_,
                                              pipe_t *pipe_)
 {

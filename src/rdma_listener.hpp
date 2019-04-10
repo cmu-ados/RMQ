@@ -34,7 +34,7 @@
 #include "own.hpp"
 #include "stdint.hpp"
 #include "io_object.hpp"
-#include "rdma_address.h"
+#include "rdma_address.hpp"
 
 namespace zmq
 {

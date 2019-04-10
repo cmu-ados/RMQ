@@ -31,7 +31,7 @@
 #define __ZMQ_ADDRESS_HPP_INCLUDED__
 
 #include <string>
-#include "rdma_address.h"
+#include "rdma_address.hpp"
 
 namespace zmq
 {

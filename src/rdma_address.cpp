@@ -32,7 +32,7 @@
 #include <sstream>
 
 #include "macros.hpp"
-#include "rdma_address.h"
+#include "rdma_address.hpp"
 #include "stdint.hpp"
 #include "err.hpp"
 #include "ip.hpp"
