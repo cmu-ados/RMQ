@@ -42,6 +42,7 @@
 #include "ip.hpp"
 #include "tcp.hpp"
 #include "socket_base.hpp"
+#include "rdma_engine.hpp"
 
 #ifndef ZMQ_HAVE_WINDOWS
 #include <unistd.h>
@@ -116,8 +117,8 @@ void zmq::rdma_listener_t::in_event ()
     
     // FIXME: Should change to rdma_engine_t
     //  Create the engine object for this connection.
-    stream_engine_t *engine =
-            new (std::nothrow) stream_engine_t (fd, options, _endpoint);
+    rdma_engine_t *engine =
+            new (std::nothrow) rdma_engine_t (fd, options, _endpoint);
     alloc_assert (engine);
 
     //  Choose I/O thread to run connecter in. Given that we are already

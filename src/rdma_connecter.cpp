@@ -42,6 +42,7 @@
 #include "address.hpp"
 #include "rdma_address.hpp"
 #include "session_base.hpp"
+#include "rdma_engine.hpp"
 
 #if !defined ZMQ_HAVE_WINDOWS
 #include <unistd.h>
@@ -154,8 +155,8 @@ void zmq::rdma_connecter_t::out_event ()
     }
 
     //  Create the engine object for this connection.
-    stream_engine_t *engine =
-      new (std::nothrow) stream_engine_t (fd, options, _endpoint);
+    rdma_engine_t *engine =
+      new (std::nothrow) rdma_engine_t (fd, options, _endpoint);
     alloc_assert (engine);
 
     //  Attach the engine to the corresponding session object.
