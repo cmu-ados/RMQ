@@ -684,6 +684,7 @@ set(cxx-sources
   socks_connecter.cpp
   stream.cpp
   stream_engine.cpp
+  rdma_engine.cpp
   sub.cpp
   tcp.cpp
   tcp_address.cpp
@@ -813,6 +814,7 @@ set(cxx-sources
   stdint.hpp
   stream.hpp
   stream_engine.hpp
+  rdma_engine.hpp
   sub.hpp
   tcp.hpp
   tcp_address.hpp
