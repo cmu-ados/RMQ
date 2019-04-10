@@ -1066,7 +1066,7 @@ else()
   # avoid building everything twice for shared + static
   # only on *nix, as Windows needs different preprocessor defines in static builds
   if(NOT MINGW)
-    add_library(objects OBJECT ${sources} src/rdma_address.h src/rdma_address.cpp)
+    add_library(objects OBJECT ${sources} src/rdma_address.h src/rdma_address.cpp src/rdma_listener.h src/rdma_listener.cpp)
     set_property(TARGET objects PROPERTY POSITION_INDEPENDENT_CODE ON)
     target_include_directories(objects
       PUBLIC
