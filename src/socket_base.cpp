@@ -332,6 +332,7 @@ int zmq::socket_base_t::check_protocol (const std::string &protocol_) const
         && protocol_ != protocol_name::ipc
 #endif
         && protocol_ != protocol_name::tcp
+        && protocol_ != protocol_name::rdma
 #if defined ZMQ_HAVE_OPENPGM
         //  pgm/epgm transports only available if 0MQ is compiled with OpenPGM.
         && protocol_ != "pgm"
@@ -624,6 +625,27 @@ int zmq::socket_base_t::bind (const char *endpoint_uri_)
         return 0;
     }
 
+    // FIXME: The implementation of rdma protocol is the same as TCP for now!
+    if (protocol == protocol_name::rdma) {
+        tcp_listener_t *listener =
+                new (std::nothrow) tcp_listener_t (io_thread, this, options);
+        alloc_assert (listener);
+        rc = listener->set_address (address.c_str ());
+        if (rc != 0) {
+            LIBZMQ_DELETE (listener);
+            event_bind_failed (address, zmq_errno ());
+            return -1;
+        }
+
+        // Save last endpoint URI
+        listener->get_address (_last_endpoint);
+
+        add_endpoint (_last_endpoint.c_str (), static_cast<own_t *> (listener),
+                      NULL);
+        options.connected = true;
+        return 0;
+    }
+
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
     if (protocol == protocol_name::ipc) {
@@ -856,6 +878,51 @@ int zmq::socket_base_t::connect (const char *endpoint_uri_)
         //  Defer resolution until a socket is opened
         paddr->resolved.tcp_addr = NULL;
     }
+
+    //  Resolve address (if needed by the protocol)
+    if (protocol == protocol_name::rdma) {
+        //  Do some basic sanity checks on rdma:// address syntax
+        //  - hostname starts with digit or letter, with embedded '-' or '.'
+        //  - IPv6 address may contain hex chars and colons.
+        //  - IPv6 link local address may contain % followed by interface name / zone_id
+        //    (Reference: https://tools.ietf.org/html/rfc4007)
+        //  - IPv4 address may contain decimal digits and dots.
+        //  - Address must end in ":port" where port is *, or numeric
+        //  - Address may contain two parts separated by ':'
+        //  Following code is quick and dirty check to catch obvious errors,
+        //  without trying to be fully accurate.
+        const char *check = address.c_str ();
+        if (isalnum (*check) || isxdigit (*check) || *check == '['
+            || *check == ':') {
+            check++;
+            while (isalnum (*check) || isxdigit (*check) || *check == '.'
+                   || *check == '-' || *check == ':' || *check == '%'
+                   || *check == ';' || *check == '[' || *check == ']'
+                   || *check == '_' || *check == '*') {
+                check++;
+            }
+        }
+        //  Assume the worst, now look for success
+        rc = -1;
+        //  Did we reach the end of the address safely?
+        if (*check == 0) {
+            //  Do we have a valid port string? (cannot be '*' in connect
+            check = strrchr (address.c_str (), ':');
+            if (check) {
+                check++;
+                if (*check && (isdigit (*check)))
+                    rc = 0; //  Valid
+            }
+        }
+        if (rc == -1) {
+            errno = EINVAL;
+            LIBZMQ_DELETE (paddr);
+            return -1;
+        }
+        //  Defer resolution until a socket is opened
+        paddr->resolved.rdma_addr = NULL;
+    }
+
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
     else if (protocol == protocol_name::ipc) {
@@ -1000,6 +1067,32 @@ std::string zmq::socket_base_t::resolve_tcp_addr (std::string endpoint_uri_,
     }
     return endpoint_uri_;
 }
+std::string zmq::socket_base_t::resolve_rdma_addr (std::string endpoint_uri_,
+                                                  const char *rdma_address_)
+{
+    // The resolved last_endpoint is used as a key in the endpoints map.
+    // The address passed by the user might not match in the RDMA case due to
+    // IPv4-in-IPv6 mapping (EG: rdma://[::ffff:127.0.0.1]:9999), so try to
+    // resolve before giving up. Given at this stage we don't know whether a
+    // socket is connected or bound, try with both.
+    if (_endpoints.find (endpoint_uri_) == _endpoints.end ()) {
+        rdma_address_t *rdma_address = new (std::nothrow) rdma_address_t ();
+        alloc_assert (rdma_address);
+        int rc = rdma_address->resolve (rdma_address_, false, options.ipv6);
+
+        if (rc == 0) {
+            rdma_address->to_string (endpoint_uri_);
+            if (_endpoints.find (endpoint_uri_) == _endpoints.end ()) {
+                rc = rdma_address->resolve (rdma_address_, true, options.ipv6);
+                if (rc == 0) {
+                    rdma_address->to_string (endpoint_uri_);
+                }
+            }
+        }
+        LIBZMQ_DELETE (rdma_address);
+    }
+    return endpoint_uri_;
+}
 
 void zmq::socket_base_t::add_endpoint (const char *endpoint_uri_,
                                        own_t *endpoint_,
@@ -1054,10 +1147,14 @@ int zmq::socket_base_t::term_endpoint (const char *endpoint_uri_)
                  : _inprocs.erase_pipes (endpoint_uri_str);
     }
 
-    const std::string resolved_endpoint_uri =
-      uri_protocol == protocol_name::tcp
-        ? resolve_tcp_addr (endpoint_uri_str, uri_path.c_str ())
-        : endpoint_uri_str;
+    std::string resolved_endpoint_uri = endpoint_uri_str;
+    if (uri_protocol == protocol_name::tcp) {
+        resolved_endpoint_uri = resolve_tcp_addr (endpoint_uri_str, uri_path.c_str ());
+    } else if (uri_protocol == protocol_name::rdma) {
+        resolved_endpoint_uri = resolve_rdma_addr (endpoint_uri_str, uri_path.c_str ());
+    }
+
+
 
     //  Find the endpoints range (if any) corresponding to the endpoint_uri_ string.
     const std::pair<endpoints_t::iterator, endpoints_t::iterator> range =

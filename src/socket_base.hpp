@@ -268,6 +268,9 @@ class socket_base_t : public own_t,
     std::string resolve_tcp_addr (std::string endpoint_uri_,
                                   const char *tcp_address_);
 
+    std::string resolve_rdma_addr (std::string endpoint_uri_,
+                                                       const char *rdma_address_);
+
     //  Socket's mailbox object.
     i_mailbox *_mailbox;
 

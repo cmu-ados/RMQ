@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 #endif
 
+#include <string>
 #include "ip_resolver.hpp"
 
 namespace zmq

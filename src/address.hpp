@@ -31,6 +31,7 @@
 #define __ZMQ_ADDRESS_HPP_INCLUDED__
 
 #include <string>
+#include "rdma_address.h"
 
 namespace zmq
 {
@@ -52,6 +53,7 @@ namespace protocol_name
 static const char inproc[] = "inproc";
 static const char tcp[] = "tcp";
 static const char udp[] = "udp";
+static const char rdma[] = "rdma";
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
 static const char ipc[] = "ipc";
@@ -82,6 +84,7 @@ struct address_t
     {
         void *dummy;
         tcp_address_t *tcp_addr;
+        rdma_address_t *rdma_addr;
         udp_address_t *udp_addr;
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
