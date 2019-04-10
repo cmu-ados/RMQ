@@ -554,6 +554,8 @@ zmq::session_base_t::connecter_factory_entry_t
   zmq::session_base_t::_connecter_factories[] = {
     connecter_factory_entry_t (protocol_name::tcp,
                                &zmq::session_base_t::create_connecter_tcp),
+    connecter_factory_entry_t (protocol_name::rdma,
+                               &zmq::session_base_t::create_connecter_rdma),
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
     connecter_factory_entry_t (protocol_name::ipc,
@@ -668,6 +670,23 @@ zmq::own_t *zmq::session_base_t::create_connecter_tcp (io_thread_t *io_thread_,
     }
     return new (std::nothrow)
       tcp_connecter_t (io_thread_, this, options, _addr, wait_);
+}
+
+
+// FIXME: The create_connecter_rdma is the same as TCP for now!
+zmq::own_t *zmq::session_base_t::create_connecter_rdma (io_thread_t *io_thread_,
+                                                       bool wait_)
+{
+    if (!options.socks_proxy_address.empty ()) {
+        address_t *proxy_address = new (std::nothrow) address_t (
+                protocol_name::tcp, options.socks_proxy_address, this->get_ctx ());
+        alloc_assert (proxy_address);
+        return new (std::nothrow) socks_connecter_t (
+                io_thread_, this, options, _addr, proxy_address, wait_);
+    }
+    const_cast<std::string&>(_addr->protocol) = protocol_name::tcp;
+    return new (std::nothrow)
+            tcp_connecter_t (io_thread_, this, options, _addr, wait_);
 }
 
 #ifdef ZMQ_HAVE_OPENPGM
