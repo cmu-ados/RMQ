@@ -47,6 +47,7 @@
 #include "err.hpp"
 #include "msg.hpp"
 #include "random.hpp"
+#include "ib_res.hpp"
 
 #ifdef ZMQ_HAVE_VMCI
 #include <vmci_sockets.h>
@@ -243,8 +244,10 @@ int zmq::ctx_t::set (int option_, int optval_)
         scoped_lock_t locker (_opt_sync);
         _max_msgsz = optval_ < INT_MAX ? optval_ : INT_MAX;
     } else if (option_ == ZMQ_ZERO_COPY_RECV && optval_ >= 0) {
-        scoped_lock_t locker (_opt_sync);
+        scoped_lock_t locker(_opt_sync);
         _zero_copy = (optval_ != 0);
+    } else if (option_ == ZMQ_ENABLE_RDMA && optval_ >= 0) {
+        _rdma_enabled = (optval_ != 0);
     } else {
         rc = thread_ctx_t::set (option_, optval_);
     }
@@ -270,6 +273,8 @@ int zmq::ctx_t::get (int option_)
         rc = sizeof (zmq_msg_t);
     else if (option_ == ZMQ_ZERO_COPY_RECV) {
         rc = _zero_copy;
+    } else if (option_ == ZMQ_ENABLE_RDMA) {
+        rc = _rdma_enabled;
     } else {
         rc = thread_ctx_t::get (option_);
     }
@@ -334,6 +339,9 @@ bool zmq::ctx_t::start ()
          i >= static_cast<int32_t> (ios) + term_and_reaper_threads_count; i--) {
         _empty_slots.push_back (i);
     }
+
+    // RDMA: init ib resources
+    setup_ib(_ib_res, _max_sockets, _max_msgsz);
 
     _starting = false;
     return true;

@@ -634,6 +634,7 @@ set(cxx-sources
   epoll.cpp
   err.cpp
   fq.cpp
+  ib_res.cpp
   io_object.cpp
   io_thread.cpp
   ip.cpp
@@ -756,6 +757,8 @@ set(cxx-sources
   i_engine.hpp
   i_mailbox.hpp
   i_poll_events.hpp
+  ib_conf.hpp
+  ib_res.hpp
   io_object.hpp
   io_thread.hpp
   ip.hpp
@@ -1139,6 +1142,8 @@ foreach(target ${target_outputs})
 endforeach()
 
 if(BUILD_SHARED)
+  # RDMA: add libibverbs
+  target_link_libraries(libzmq ibverbs)
   target_link_libraries(libzmq ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
   if(SODIUM_FOUND)
@@ -1169,6 +1174,8 @@ if(BUILD_SHARED)
 endif()
 
 if(BUILD_STATIC)
+  # RDMA: add libibverbs
+  target_link_libraries(libzmq-static ibverbs)
   target_link_libraries(libzmq-static ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
   if(SODIUM_FOUND)

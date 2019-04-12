@@ -43,6 +43,7 @@
 #include "options.hpp"
 #include "atomic_counter.hpp"
 #include "thread.hpp"
+#include "ib_res.hpp"
 
 namespace zmq
 {
@@ -260,6 +261,10 @@ class ctx_t : public thread_ctx_t
     int _vmci_family;
     mutex_t _vmci_sync;
 #endif
+
+    // RDMA: Infiniband related resources
+    ib_res_t _ib_res;
+    bool _rdma_enabled;
 };
 }
 

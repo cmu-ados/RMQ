@@ -41,6 +41,23 @@ class io_thread_t;
 class session_base_t;
 struct address_t;
 
+struct IBRes {
+    struct ibv_context		*ctx;
+    struct ibv_pd		*pd;
+    struct ibv_mr		*mr;
+    struct ibv_cq		*cq;
+    struct ibv_qp		**qp;
+    struct ibv_srq              *srq;
+    struct ibv_port_attr	 port_attr;
+    struct ibv_device_attr	 dev_attr;
+
+    int     num_qps;
+    char   *ib_buf;
+    size_t  ib_buf_size;
+};
+
+extern struct IBRes ib_res;
+
 class rdma_connecter_t : public own_t, public io_object_t
 {
   public:
@@ -61,6 +78,8 @@ class rdma_connecter_t : public own_t, public io_object_t
         connect_timer_id
     };
 
+    struct IBRes ib_res;
+    int setup_ib();
     //  Handlers for incoming commands.
     void process_plug ();
     void process_term (int linger_);

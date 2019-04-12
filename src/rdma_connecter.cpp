@@ -65,6 +65,7 @@
 #include <TargetConditionals.h>
 #endif
 
+
 zmq::rdma_connecter_t::rdma_connecter_t (class io_thread_t *io_thread_,
                                        class session_base_t *session_,
                                        const options_t &options_,
@@ -89,6 +90,7 @@ zmq::rdma_connecter_t::rdma_connecter_t (class io_thread_t *io_thread_,
     // or does not matter, change such that endpoint in initialized using an
     // initializer, and make endpoint const
 }
+
 
 zmq::rdma_connecter_t::~rdma_connecter_t ()
 {
