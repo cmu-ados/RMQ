@@ -724,7 +724,7 @@ int zmq::ctx_t::setup_ib() {
   assert(ret == 0);
 
   _ib_res.ib_buf_size = get(ZMQ_IB_BUF_SIZE);
-  posix_memalign((void **) _ib_res.ib_buf, 4096, _ib_res.ib_buf_size);
+  posix_memalign((void **) (&_ib_res.ib_buf), 4096, _ib_res.ib_buf_size);
   assert(_ib_res.ib_buf != NULL);
 
   _ib_res.mr = ibv_reg_mr(_ib_res.pd, (void *) _ib_res.ib_buf,
