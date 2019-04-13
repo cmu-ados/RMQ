@@ -219,7 +219,8 @@ ZMQ_EXPORT void zmq_version (int *major_, int *minor_, int *patch_);
 #define ZMQ_THREAD_AFFINITY_CPU_ADD 7
 #define ZMQ_THREAD_AFFINITY_CPU_REMOVE 8
 #define ZMQ_THREAD_NAME_PREFIX 9
-#define ZMQ_ENABLE_RDMA 10
+#define ZMQ_IB_NUM_QPS 10
+#define ZMQ_IB_BUF_SIZE 11
 
 /*  Default for new contexts                                                  */
 #define ZMQ_IO_THREADS_DFLT 1

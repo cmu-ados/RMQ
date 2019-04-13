@@ -1,9 +1,5 @@
-//
-// Created by Minghua Deng on 4/10/19.
-//
-
-#ifndef ZEROMQ_IB_RES_HPP_INCLUDED__
-#define ZEROMQ_IB_RES_HPP_INCLUDED__
+#ifndef __ZEROMQ_IB_RES_HPP_INCLUDED__
+#define __ZEROMQ_IB_RES_HPP_INCLUDED__
 
 #include <cstdio>
 #include <infiniband/verbs.h>
@@ -25,9 +21,6 @@ namespace zmq
     char *ib_buf;
     size_t ib_buf_size;
   };
-
-  int setup_ib(ib_res_t & ib_res, int max_ib_qps, int max_msg_size);
-  void close_ib(ib_res_t & ib_res);
 }
 
-#endif //ZEROMQ_IB_RES_HPP_INCLUDED__
+#endif // __ZEROMQ_IB_RES_HPP_INCLUDED__

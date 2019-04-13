@@ -465,6 +465,7 @@ void zmq::session_base_t::engine_error (
         _zap_pipe->check_read ();
 }
 
+#ifdef ZMQ_HAVE_RDMA
 void zmq::session_base_t::engine_error (
     zmq::rdma_engine_t::error_reason_t reason_)
 {
@@ -507,6 +508,7 @@ void zmq::session_base_t::engine_error (
   if (_zap_pipe)
     _zap_pipe->check_read ();
 }
+#endif
 
 void zmq::session_base_t::process_term (int linger_)
 {
@@ -600,8 +602,10 @@ zmq::session_base_t::connecter_factory_entry_t
   zmq::session_base_t::_connecter_factories[] = {
     connecter_factory_entry_t (protocol_name::tcp,
                                &zmq::session_base_t::create_connecter_tcp),
+#ifdef ZMQ_HAVE_RDMA
     connecter_factory_entry_t (protocol_name::rdma,
                                &zmq::session_base_t::create_connecter_rdma),
+#endif
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
     connecter_factory_entry_t (protocol_name::ipc,
@@ -718,7 +722,7 @@ zmq::own_t *zmq::session_base_t::create_connecter_tcp (io_thread_t *io_thread_,
       tcp_connecter_t (io_thread_, this, options, _addr, wait_);
 }
 
-
+#ifdef ZMQ_HAVE_RDMA
 // FIXME: The create_connecter_rdma is the same as TCP for now!
 zmq::own_t *zmq::session_base_t::create_connecter_rdma (io_thread_t *io_thread_,
                                                        bool wait_)
@@ -733,6 +737,7 @@ zmq::own_t *zmq::session_base_t::create_connecter_rdma (io_thread_t *io_thread_,
     return new (std::nothrow)
             rdma_connecter_t (io_thread_, this, options, _addr, wait_);
 }
+#endif
 
 #ifdef ZMQ_HAVE_OPENPGM
 void zmq::session_base_t::start_connecting_pgm (io_thread_t *io_thread_)

@@ -74,6 +74,7 @@ set(pkg_config_names_private "")
 
 option(WITH_OPENPGM "Build with support for OpenPGM" OFF)
 option(WITH_VMCI "Build with support for VMware VMCI socket" OFF)
+option(WITH_RDMA "Build with RDMA support" OFF)
 
 if(APPLE)
   option(ZMQ_BUILD_FRAMEWORK "Build as OS X framework" OFF)
@@ -634,7 +635,6 @@ set(cxx-sources
   epoll.cpp
   err.cpp
   fq.cpp
-  ib_res.cpp
   io_object.cpp
   io_thread.cpp
   ip.cpp
@@ -685,10 +685,6 @@ set(cxx-sources
   socks_connecter.cpp
   stream.cpp
   stream_engine.cpp
-  rdma_address.cpp
-  rdma_connecter.cpp
-  rdma_engine.cpp
-  rdma_listener.cpp
   sub.cpp
   tcp.cpp
   tcp_address.cpp
@@ -757,7 +753,6 @@ set(cxx-sources
   i_engine.hpp
   i_mailbox.hpp
   i_poll_events.hpp
-  ib_conf.hpp
   ib_res.hpp
   io_object.hpp
   io_thread.hpp
@@ -804,10 +799,6 @@ set(cxx-sources
   random.hpp
   raw_decoder.hpp
   raw_encoder.hpp
-  rdma_address.hpp
-  rdma_connecter.hpp
-  rdma_engine.hpp
-  rdma_listener.hpp
   reaper.hpp
   rep.hpp
   req.hpp
@@ -916,6 +907,14 @@ endif()
 if(ZMQ_HAVE_TIPC)
   add_definitions(-DZMQ_HAVE_TIPC)
   list(APPEND cxx-sources tipc_address.cpp tipc_connecter.cpp tipc_listener.cpp)
+endif()
+
+if(WITH_RDMA)
+  add_definitions(-DZMQ_HAVE_RDMA)
+  list(APPEND cxx-sources   rdma_address.hpp
+          rdma_connecter.hpp
+          rdma_engine.hpp
+          rdma_listener.hpp rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp)
 endif()
 
 #-----------------------------------------------------------------------------

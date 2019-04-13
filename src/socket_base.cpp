@@ -333,7 +333,9 @@ int zmq::socket_base_t::check_protocol (const std::string &protocol_) const
         && protocol_ != protocol_name::ipc
 #endif
         && protocol_ != protocol_name::tcp
+#ifdef ZMQ_HAVE_RDMA
         && protocol_ != protocol_name::rdma
+#endif
 #if defined ZMQ_HAVE_OPENPGM
         //  pgm/epgm transports only available if 0MQ is compiled with OpenPGM.
         && protocol_ != "pgm"
@@ -627,6 +629,7 @@ int zmq::socket_base_t::bind (const char *endpoint_uri_)
     }
 
     // FIXME: The implementation of rdma protocol is the same as TCP for now!
+#ifdef ZMQ_HAVE_RDMA
     if (protocol == protocol_name::rdma) {
         rdma_listener_t *listener =
                 new (std::nothrow) rdma_listener_t (io_thread, this, options);
@@ -646,6 +649,7 @@ int zmq::socket_base_t::bind (const char *endpoint_uri_)
         options.connected = true;
         return 0;
     }
+#endif
 
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
@@ -880,6 +884,7 @@ int zmq::socket_base_t::connect (const char *endpoint_uri_)
         paddr->resolved.tcp_addr = NULL;
     }
 
+#ifdef ZMQ_HAVE_RDMA
     //  Resolve address (if needed by the protocol)
     if (protocol == protocol_name::rdma) {
         //  Do some basic sanity checks on rdma:// address syntax
@@ -923,6 +928,7 @@ int zmq::socket_base_t::connect (const char *endpoint_uri_)
         //  Defer resolution until a socket is opened
         paddr->resolved.rdma_addr = NULL;
     }
+#endif
 
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
@@ -1068,6 +1074,8 @@ std::string zmq::socket_base_t::resolve_tcp_addr (std::string endpoint_uri_,
     }
     return endpoint_uri_;
 }
+
+#ifdef ZMQ_HAVE_RDMA
 std::string zmq::socket_base_t::resolve_rdma_addr (std::string endpoint_uri_,
                                                   const char *rdma_address_)
 {
@@ -1094,6 +1102,7 @@ std::string zmq::socket_base_t::resolve_rdma_addr (std::string endpoint_uri_,
     }
     return endpoint_uri_;
 }
+#endif
 
 void zmq::socket_base_t::add_endpoint (const char *endpoint_uri_,
                                        own_t *endpoint_,
@@ -1151,10 +1160,12 @@ int zmq::socket_base_t::term_endpoint (const char *endpoint_uri_)
     std::string resolved_endpoint_uri = endpoint_uri_str;
     if (uri_protocol == protocol_name::tcp) {
         resolved_endpoint_uri = resolve_tcp_addr (endpoint_uri_str, uri_path.c_str ());
-    } else if (uri_protocol == protocol_name::rdma) {
+    }
+#ifdef ZMQ_HAVE_RDMA
+    else if (uri_protocol == protocol_name::rdma) {
         resolved_endpoint_uri = resolve_rdma_addr (endpoint_uri_str, uri_path.c_str ());
     }
-
+#endif
 
 
     //  Find the endpoints range (if any) corresponding to the endpoint_uri_ string.

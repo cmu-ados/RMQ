@@ -63,8 +63,9 @@ class session_base_t : public own_t, public io_object_t, public i_pipe_events
     void flush ();
     void rollback ();
     void engine_error (zmq::stream_engine_t::error_reason_t reason_);
+#ifdef ZMQ_HAVE_RDMA
     void engine_error (zmq::rdma_engine_t::error_reason_t reason_);
-
+#endif
 
     //  i_pipe_events interface implementation.
     void read_activated (zmq::pipe_t *pipe_);

@@ -43,7 +43,9 @@
 #include "options.hpp"
 #include "atomic_counter.hpp"
 #include "thread.hpp"
+#ifdef ZMQ_HAVE_RDMA
 #include "ib_res.hpp"
+#endif
 
 namespace zmq
 {
@@ -238,6 +240,11 @@ class ctx_t : public thread_ctx_t
     // Should we use zero copy message decoding in this context?
     bool _zero_copy;
 
+#ifdef ZMQ_HAVE_RDMA
+    int _ib_num_qps;
+    int _ib_buf_size; // will it overflow?
+#endif
+
     ctx_t (const ctx_t &);
     const ctx_t &operator= (const ctx_t &);
 
@@ -262,9 +269,13 @@ class ctx_t : public thread_ctx_t
     mutex_t _vmci_sync;
 #endif
 
+#ifdef ZMQ_HAVE_RDMA
     // RDMA: Infiniband related resources
     ib_res_t _ib_res;
-    bool _rdma_enabled;
+    int setup_ib();
+    void close_ib();
+#endif
+
 };
 }
 

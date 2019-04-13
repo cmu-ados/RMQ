@@ -85,7 +85,10 @@ zmq::ctx_t::ctx_t () :
     _vmci_fd = -1;
     _vmci_family = -1;
 #endif
-
+#ifdef ZMQ_HAVE_RDMA
+    _ib_num_qps = 1;
+    _ib_buf_size = 1024 * 1024;
+#endif
     //  Initialise crypto library, if needed.
     zmq::random_open ();
 }
@@ -219,6 +222,9 @@ int zmq::ctx_t::shutdown ()
             _sockets[i]->stop ();
         if (_sockets.empty ())
             _reaper->stop ();
+#ifdef ZMQ_HAVE_RDMA
+        close_ib();
+#endif
     }
 
     return 0;
@@ -246,8 +252,14 @@ int zmq::ctx_t::set (int option_, int optval_)
     } else if (option_ == ZMQ_ZERO_COPY_RECV && optval_ >= 0) {
         scoped_lock_t locker(_opt_sync);
         _zero_copy = (optval_ != 0);
-    } else if (option_ == ZMQ_ENABLE_RDMA && optval_ >= 0) {
-        _rdma_enabled = (optval_ != 0);
+#ifdef ZMQ_HAVE_RDMA
+    } else if (option_ == ZMQ_IB_NUM_QPS && optval_ >= 0) {
+        scoped_lock_t locker(_opt_sync);
+        _ib_num_qps = optval_;
+    } else if (option_ == ZMQ_IB_BUF_SIZE && optval_ >= 0) {
+        scoped_lock_t locker(_opt_sync);
+        _ib_buf_size = optval_;
+#endif
     } else {
         rc = thread_ctx_t::set (option_, optval_);
     }
@@ -271,13 +283,16 @@ int zmq::ctx_t::get (int option_)
         rc = _max_msgsz;
     else if (option_ == ZMQ_MSG_T_SIZE)
         rc = sizeof (zmq_msg_t);
-    else if (option_ == ZMQ_ZERO_COPY_RECV) {
+    else if (option_ == ZMQ_ZERO_COPY_RECV)
         rc = _zero_copy;
-    } else if (option_ == ZMQ_ENABLE_RDMA) {
-        rc = _rdma_enabled;
-    } else {
+#ifdef ZMQ_HAVE_RDMA
+    else if (option_ == ZMQ_IB_NUM_QPS)
+        rc = _ib_num_qps;
+    else if (option_ == ZMQ_IB_BUF_SIZE)
+        rc = _ib_buf_size;
+#endif
+    else
         rc = thread_ctx_t::get (option_);
-    }
     return rc;
 }
 
@@ -340,8 +355,10 @@ bool zmq::ctx_t::start ()
         _empty_slots.push_back (i);
     }
 
+#ifdef ZMQ_HAVE_RDMA
     // RDMA: init ib resources
-    setup_ib(_ib_res, _max_sockets, _max_msgsz);
+    setup_ib();
+#endif
 
     _starting = false;
     return true;
@@ -708,3 +725,105 @@ int zmq::ctx_t::get_vmci_socket_family ()
 //  is a global variable. Thus, even sockets created in different contexts have
 //  unique IDs.
 zmq::atomic_counter_t zmq::ctx_t::max_socket_id;
+
+#ifdef ZMQ_HAVE_RDMA
+#include <infiniband/verbs.h>
+
+int zmq::ctx_t::setup_ib() {
+    ibv_device **dev_list = NULL;
+    memset(&_ib_res, 0, sizeof(ib_res_t));
+
+    _ib_res.num_qps = get(ZMQ_IB_NUM_QPS);
+
+    dev_list =ibv_get_device_list(NULL);
+    assert(dev_list != NULL);
+
+    _ib_res.ctx = ibv_open_device(*dev_list);
+    assert(_ib_res.ctx != NULL);
+
+    _ib_res.pd = ibv_alloc_pd(_ib_res.ctx);
+    assert(_ib_res.pd != NULL);
+
+    int ret = ibv_query_port(_ib_res.ctx, 1, &_ib_res.port_attr);
+    assert(ret == 0);
+
+    _ib_res.ib_buf_size = get(ZMQ_IB_BUF_SIZE);
+    posix_memalign((void**)_ib_res.ib_buf, 4096, _ib_res.ib_buf_size);
+    assert(_ib_res.ib_buf != NULL);
+
+    _ib_res.mr = ibv_reg_mr (_ib_res.pd, (void*)_ib_res.ib_buf,
+                            _ib_res.ib_buf_size,
+                            IBV_ACCESS_LOCAL_WRITE|
+                            IBV_ACCESS_REMOTE_READ|
+                            IBV_ACCESS_REMOTE_WRITE);
+    assert(_ib_res.mr != NULL);
+
+    ret = ibv_query_device(_ib_res.ctx, &_ib_res.dev_attr);
+    assert(ret == 0);
+
+    _ib_res.cq = ibv_create_cq(_ib_res.ctx, _ib_res.dev_attr.max_cqe,
+                              NULL, NULL, 0);
+    assert(_ib_res.cq != NULL);
+
+    struct ibv_srq_init_attr srq_init_attr;
+
+    srq_init_attr.attr.max_wr = _ib_res.dev_attr.max_srq_wr;
+    srq_init_attr.attr.max_sge = 1;
+
+
+    _ib_res.srq = ibv_create_srq(_ib_res.pd, &srq_init_attr);
+
+    struct ibv_qp_init_attr qp_init_attr;
+
+    qp_init_attr.send_cq = _ib_res.cq;
+    qp_init_attr.recv_cq = _ib_res.cq;
+    qp_init_attr.srq = _ib_res.srq;
+    qp_init_attr.cap.max_send_wr = _ib_res.dev_attr.max_qp_wr;
+    qp_init_attr.cap.max_recv_wr = _ib_res.dev_attr.max_qp_wr;
+    qp_init_attr.cap.max_send_sge = 1;
+    qp_init_attr.cap.max_recv_sge = 1;
+    qp_init_attr.qp_type = IBV_QPT_RC;
+
+    _ib_res.qp = (struct ibv_qp **) calloc (_ib_res.num_qps,
+                                           sizeof(struct ibv_qp *));
+    assert(_ib_res.qp != NULL);
+
+    for (int i = 0; i < _ib_res.num_qps; i++) {
+        _ib_res.qp[i] = ibv_create_qp (_ib_res.pd, & qp_init_attr);
+        assert(_ib_res.qp[i] != NULL);
+    }
+
+    ibv_free_device_list (dev_list);
+    return 0;
+}
+
+void zmq::ctx_t::close_ib() {
+    if (_ib_res.qp != NULL) {
+        for (int i = 0; i < _ib_res.num_qps; i++) {
+            if (_ib_res.qp[i] != NULL) {
+                ibv_destroy_qp(_ib_res.qp[i]);
+            }
+        }
+        free(_ib_res.qp);
+    }
+
+    if (_ib_res.srq != NULL)
+        ibv_destroy_srq(_ib_res.srq);
+    if (_ib_res.cq != NULL) {
+        ibv_destroy_cq (_ib_res.cq);
+    }
+    if (_ib_res.mr != NULL) {
+        ibv_dereg_mr (_ib_res.mr);
+    }
+
+    if (_ib_res.pd != NULL) {
+        ibv_dealloc_pd (_ib_res.pd);
+    }
+    if (_ib_res.ctx != NULL) {
+        ibv_close_device (_ib_res.ctx);
+    }
+    if (_ib_res.ib_buf != NULL) {
+        free (_ib_res.ib_buf);
+    }
+}
+#endif
