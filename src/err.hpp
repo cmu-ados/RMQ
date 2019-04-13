@@ -53,19 +53,18 @@
 #define EPROTO 0
 #endif
 
-namespace zmq
-{
-const char *errno_to_string (int errno_);
+namespace zmq {
+const char *errno_to_string(int errno_);
 #if defined __clang__
 #if __has_feature(attribute_analyzer_noreturn)
-void zmq_abort (const char *errmsg_) __attribute__ ((analyzer_noreturn));
+void zmq_abort(const char *errmsg_) __attribute__ ((analyzer_noreturn));
 #endif
 #elif defined __MSCVER__
 __declspec(noreturn) void zmq_abort (const char *errmsg_);
 #else
 void zmq_abort (const char *errmsg_);
 #endif
-void print_backtrace ();
+void print_backtrace();
 }
 
 #ifdef ZMQ_HAVE_WINDOWS

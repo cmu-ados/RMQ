@@ -33,38 +33,34 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_roundtrip ()
-{
-    void *sb = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, "tipc://{5560,0,0}"));
+void test_roundtrip() {
+  void *sb = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, "tipc://{5560,0,0}"));
 
-    void *sc = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, "tipc://{5560,0}@0.0.0"));
+  void *sc = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, "tipc://{5560,0}@0.0.0"));
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    test_context_socket_close (sc);
-    test_context_socket_close (sb);
+  test_context_socket_close(sc);
+  test_context_socket_close(sb);
 }
 
-int main ()
-{
-    if (!is_tipc_available ()) {
-        printf ("TIPC environment unavailable, skipping test\n");
-        return 77;
-    }
+int main() {
+  if (!is_tipc_available()) {
+    printf("TIPC environment unavailable, skipping test\n");
+    return 77;
+  }
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_roundtrip);
-    return UNITY_END ();
+  UNITY_BEGIN();
+  RUN_TEST(test_roundtrip);
+  return UNITY_END();
 }

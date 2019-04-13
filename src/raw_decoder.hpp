@@ -35,34 +35,32 @@
 #include "stdint.hpp"
 #include "decoder_allocators.hpp"
 
-namespace zmq
-{
+namespace zmq {
 //  Decoder for 0MQ v1 framing protocol. Converts data stream into messages.
 
-class raw_decoder_t : public i_decoder
-{
-  public:
-    raw_decoder_t (size_t bufsize_);
-    virtual ~raw_decoder_t ();
+class raw_decoder_t : public i_decoder {
+ public:
+  raw_decoder_t(size_t bufsize_);
+  virtual ~raw_decoder_t();
 
-    //  i_decoder interface.
+  //  i_decoder interface.
 
-    virtual void get_buffer (unsigned char **data_, size_t *size_);
+  virtual void get_buffer(unsigned char **data_, size_t *size_);
 
-    virtual int
-    decode (const unsigned char *data_, size_t size_, size_t &bytes_used_);
+  virtual int
+  decode(const unsigned char *data_, size_t size_, size_t &bytes_used_);
 
-    virtual msg_t *msg () { return &_in_progress; }
+  virtual msg_t *msg() { return &_in_progress; }
 
-    virtual void resize_buffer (size_t) {}
+  virtual void resize_buffer(size_t) {}
 
-  private:
-    msg_t _in_progress;
+ private:
+  msg_t _in_progress;
 
-    shared_message_memory_allocator _allocator;
+  shared_message_memory_allocator _allocator;
 
-    raw_decoder_t (const raw_decoder_t &);
-    void operator= (const raw_decoder_t &);
+  raw_decoder_t(const raw_decoder_t &);
+  void operator=(const raw_decoder_t &);
 };
 }
 

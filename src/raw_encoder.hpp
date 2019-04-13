@@ -36,21 +36,19 @@
 
 #include "encoder.hpp"
 
-namespace zmq
-{
+namespace zmq {
 //  Encoder for 0MQ framing protocol. Converts messages into data batches.
 
-class raw_encoder_t : public encoder_base_t<raw_encoder_t>
-{
-  public:
-    raw_encoder_t (size_t bufsize_);
-    ~raw_encoder_t ();
+class raw_encoder_t : public encoder_base_t<raw_encoder_t> {
+ public:
+  raw_encoder_t(size_t bufsize_);
+  ~raw_encoder_t();
 
-  private:
-    void raw_message_ready ();
+ private:
+  void raw_message_ready();
 
-    raw_encoder_t (const raw_encoder_t &);
-    const raw_encoder_t &operator= (const raw_encoder_t &);
+  raw_encoder_t(const raw_encoder_t &);
+  const raw_encoder_t &operator=(const raw_encoder_t &);
 };
 }
 

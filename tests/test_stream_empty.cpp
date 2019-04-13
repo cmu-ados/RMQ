@@ -30,50 +30,46 @@
 #include "testutil.hpp"
 #include "testutil_unity.hpp"
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_stream_empty ()
-{
-    char my_endpoint[MAX_SOCKET_STRING];
+void test_stream_empty() {
+  char my_endpoint[MAX_SOCKET_STRING];
 
-    void *stream = test_context_socket (ZMQ_STREAM);
-    void *dealer = test_context_socket (ZMQ_DEALER);
+  void *stream = test_context_socket(ZMQ_STREAM);
+  void *dealer = test_context_socket(ZMQ_DEALER);
 
-    bind_loopback_ipv4 (stream, my_endpoint, sizeof my_endpoint);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (dealer, my_endpoint));
-    send_string_expect_success (dealer, "", 0);
+  bind_loopback_ipv4(stream, my_endpoint, sizeof my_endpoint);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(dealer, my_endpoint));
+  send_string_expect_success(dealer, "", 0);
 
-    zmq_msg_t ident, empty;
-    zmq_msg_init (&ident);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_recv (&ident, stream, 0));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_msg_init_data (&empty, (void *) "", 0, NULL, NULL));
+  zmq_msg_t ident, empty;
+  zmq_msg_init(&ident);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_recv(&ident, stream, 0));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_msg_init_data(&empty, (void *) "", 0, NULL, NULL));
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_send (&ident, stream, ZMQ_SNDMORE));
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_close (&ident));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_send(&ident, stream, ZMQ_SNDMORE));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_close(&ident));
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_send (&empty, stream, 0));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_send(&empty, stream, 0));
 
-    //  This close used to fail with Bad Address
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_close (&empty));
+  //  This close used to fail with Bad Address
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_msg_close(&empty));
 
-    test_context_socket_close_zero_linger (dealer);
-    test_context_socket_close_zero_linger (stream);
+  test_context_socket_close_zero_linger(dealer);
+  test_context_socket_close_zero_linger(stream);
 }
 
-int main ()
-{
-    setup_test_environment ();
+int main() {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_stream_empty);
-    return UNITY_END ();
+  UNITY_BEGIN ();
+  RUN_TEST (test_stream_empty);
+  return UNITY_END ();
 }

@@ -37,8 +37,7 @@
 #include "mutex.hpp"
 #include "msg.hpp"
 
-namespace zmq
-{
+namespace zmq {
 //  dbuffer is a single-producer single-consumer double-buffer
 //  implementation.
 //
@@ -53,88 +52,81 @@ namespace zmq
 //  value written, it is used by ypipe_conflate to mimic ypipe
 //  functionality regarding a reader being asleep
 
-template <typename T> class dbuffer_t;
+template<typename T>
+class dbuffer_t;
 
-template <> class dbuffer_t<msg_t>
-{
-  public:
-    inline dbuffer_t () :
-        _back (&_storage[0]),
-        _front (&_storage[1]),
-        _has_msg (false)
-    {
-        _back->init ();
-        _front->init ();
+template<>
+class dbuffer_t<msg_t> {
+ public:
+  inline dbuffer_t() :
+      _back(&_storage[0]),
+      _front(&_storage[1]),
+      _has_msg(false) {
+    _back->init();
+    _front->init();
+  }
+
+  inline ~dbuffer_t() {
+    _back->close();
+    _front->close();
+  }
+
+  inline void write(const msg_t &value_) {
+    msg_t &xvalue = const_cast<msg_t &> (value_);
+
+    zmq_assert (xvalue.check());
+    _back->move(xvalue); // cannot just overwrite, might leak
+
+    zmq_assert (_back->check());
+
+    if (_sync.try_lock()) {
+      std::swap(_back, _front);
+      _has_msg = true;
+
+      _sync.unlock();
     }
+  }
 
-    inline ~dbuffer_t ()
+  inline bool read(msg_t *value_) {
+    if (!value_)
+      return false;
+
     {
-        _back->close ();
-        _front->close ();
+      scoped_lock_t lock(_sync);
+      if (!_has_msg)
+        return false;
+
+      zmq_assert (_front->check());
+
+      *value_ = *_front;
+      _front->init(); // avoid double free
+
+      _has_msg = false;
+      return true;
     }
+  }
 
-    inline void write (const msg_t &value_)
-    {
-        msg_t &xvalue = const_cast<msg_t &> (value_);
+  inline bool check_read() {
+    scoped_lock_t lock(_sync);
 
-        zmq_assert (xvalue.check ());
-        _back->move (xvalue); // cannot just overwrite, might leak
+    return _has_msg;
+  }
 
-        zmq_assert (_back->check ());
+  inline bool probe(bool (*fn_)(const msg_t &)) {
+    scoped_lock_t lock(_sync);
+    return (*fn_)(*_front);
+  }
 
-        if (_sync.try_lock ()) {
-            std::swap (_back, _front);
-            _has_msg = true;
+ private:
+  msg_t _storage[2];
+  msg_t *_back, *_front;
 
-            _sync.unlock ();
-        }
-    }
+  mutex_t _sync;
+  bool _has_msg;
 
-    inline bool read (msg_t *value_)
-    {
-        if (!value_)
-            return false;
-
-        {
-            scoped_lock_t lock (_sync);
-            if (!_has_msg)
-                return false;
-
-            zmq_assert (_front->check ());
-
-            *value_ = *_front;
-            _front->init (); // avoid double free
-
-            _has_msg = false;
-            return true;
-        }
-    }
-
-
-    inline bool check_read ()
-    {
-        scoped_lock_t lock (_sync);
-
-        return _has_msg;
-    }
-
-    inline bool probe (bool (*fn_) (const msg_t &))
-    {
-        scoped_lock_t lock (_sync);
-        return (*fn_) (*_front);
-    }
-
-
-  private:
-    msg_t _storage[2];
-    msg_t *_back, *_front;
-
-    mutex_t _sync;
-    bool _has_msg;
-
-    //  Disable copying of dbuffer.
-    dbuffer_t (const dbuffer_t &);
-    const dbuffer_t &operator= (const dbuffer_t &);
+  //  Disable copying of dbuffer.
+  dbuffer_t(const dbuffer_t &);
+  const dbuffer_t &operator=(const dbuffer_t &);
 };
 }
 

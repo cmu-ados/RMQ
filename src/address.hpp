@@ -32,8 +32,7 @@
 
 #include <string>
 
-namespace zmq
-{
+namespace zmq {
 class ctx_t;
 class tcp_address_t;
 class udp_address_t;
@@ -50,8 +49,7 @@ class tipc_address_t;
 class vmci_address_t;
 #endif
 
-namespace protocol_name
-{
+namespace protocol_name {
 static const char inproc[] = "inproc";
 static const char tcp[] = "tcp";
 static const char udp[] = "udp";
@@ -68,41 +66,39 @@ static const char vmci[] = "vmci";
 #endif
 }
 
-struct address_t
-{
-    address_t (const std::string &protocol_,
-               const std::string &address_,
-               ctx_t *parent_);
+struct address_t {
+  address_t(const std::string &protocol_,
+            const std::string &address_,
+            ctx_t *parent_);
 
-    ~address_t ();
+  ~address_t();
 
-    const std::string protocol;
-    const std::string address;
-    ctx_t *const parent;
+  const std::string protocol;
+  const std::string address;
+  ctx_t *const parent;
 
-    //  Protocol specific resolved address
-    //  All members must be pointers to allow for consistent initialization
-    union
-    {
-        void *dummy;
-        tcp_address_t *tcp_addr;
+  //  Protocol specific resolved address
+  //  All members must be pointers to allow for consistent initialization
+  union {
+    void *dummy;
+    tcp_address_t *tcp_addr;
 #ifdef ZMQ_HAVE_RDMA
-        rdma_address_t *rdma_addr;
+    rdma_address_t *rdma_addr;
 #endif
-        udp_address_t *udp_addr;
+    udp_address_t *udp_addr;
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
-        ipc_address_t *ipc_addr;
+    ipc_address_t *ipc_addr;
 #endif
 #if defined ZMQ_HAVE_LINUX || defined ZMQ_HAVE_VXWORKS
-        tipc_address_t *tipc_addr;
+    tipc_address_t *tipc_addr;
 #endif
 #if defined ZMQ_HAVE_VMCI
-        vmci_address_t *vmci_addr;
+    vmci_address_t *vmci_addr;
 #endif
-    } resolved;
+  } resolved;
 
-    int to_string (std::string &addr_) const;
+  int to_string(std::string &addr_) const;
 };
 }
 

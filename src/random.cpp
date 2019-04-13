@@ -46,23 +46,21 @@
 #include "sodium.h"
 #endif
 
-void zmq::seed_random ()
-{
+void zmq::seed_random() {
 #if defined ZMQ_HAVE_WINDOWS
-    int pid = static_cast<int> (GetCurrentProcessId ());
+  int pid = static_cast<int> (GetCurrentProcessId ());
 #else
-    int pid = static_cast<int> (getpid ());
+  int pid = static_cast<int> (getpid());
 #endif
-    srand (static_cast<unsigned int> (clock_t::now_us () + pid));
+  srand(static_cast<unsigned int> (clock_t::now_us() + pid));
 }
 
-uint32_t zmq::generate_random ()
-{
-    //  Compensate for the fact that rand() returns signed integer.
-    uint32_t low = static_cast<uint32_t> (rand ());
-    uint32_t high = static_cast<uint32_t> (rand ());
-    high <<= (sizeof (int) * 8 - 1);
-    return high | low;
+uint32_t zmq::generate_random() {
+  //  Compensate for the fact that rand() returns signed integer.
+  uint32_t low = static_cast<uint32_t> (rand());
+  uint32_t high = static_cast<uint32_t> (rand());
+  high <<= (sizeof(int) * 8 - 1);
+  return high | low;
 }
 
 //  When different threads have their own context the file descriptor
@@ -101,9 +99,9 @@ uint32_t zmq::generate_random ()
 
 //  TODO this should probably be done via config.h
 #if __cplusplus >= 201103L                                                     \
-  || (defined(__cpp_threadsafe_static_init)                                    \
-      && __cpp_threadsafe_static_init >= 200806)                               \
-  || (defined(_MSC_VER) && _MSC_VER >= 1900)
+ || (defined(__cpp_threadsafe_static_init)                                    \
+ && __cpp_threadsafe_static_init >= 200806)                               \
+ || (defined(_MSC_VER) && _MSC_VER >= 1900)
 #define ZMQ_HAVE_THREADSAFE_STATIC_LOCAL_INIT 1
 //  TODO this might probably also be set if a sufficiently recent gcc is used
 //  without -fno-threadsafe-statics, but this cannot be determined at
@@ -113,58 +111,55 @@ uint32_t zmq::generate_random ()
 #endif
 
 #if !ZMQ_HAVE_THREADSAFE_STATIC_LOCAL_INIT                                     \
-  && (defined(ZMQ_USE_TWEETNACL) && !defined(ZMQ_HAVE_WINDOWS)                 \
-      && !defined(ZMQ_HAVE_GETRANDOM))
+ && (defined(ZMQ_USE_TWEETNACL) && !defined(ZMQ_HAVE_WINDOWS)                 \
+ && !defined(ZMQ_HAVE_GETRANDOM))
 static unsigned int random_refcount = 0;
 static zmq::mutex_t random_sync;
 #endif
 
-static void manage_random (bool init_)
-{
+static void manage_random(bool init_) {
 #if defined(ZMQ_USE_TWEETNACL) && !defined(ZMQ_HAVE_WINDOWS)                   \
-  && !defined(ZMQ_HAVE_GETRANDOM)
+ && !defined(ZMQ_HAVE_GETRANDOM)
 
 #if ZMQ_HAVE_THREADSAFE_STATIC_LOCAL_INIT
-    static int random_refcount = 0;
-    static zmq::mutex_t random_sync;
+  static int random_refcount = 0;
+  static zmq::mutex_t random_sync;
 #endif
 
-    if (init_) {
-        zmq::scoped_lock_t locker (random_sync);
+  if (init_) {
+    zmq::scoped_lock_t locker(random_sync);
 
-        if (random_refcount == 0) {
-            int rc = sodium_init ();
-            zmq_assert (rc != -1);
-        }
-
-        ++random_refcount;
-    } else {
-        zmq::scoped_lock_t locker (random_sync);
-        --random_refcount;
-
-        if (random_refcount == 0) {
-            randombytes_close ();
-        }
+    if (random_refcount == 0) {
+      int rc = sodium_init();
+      zmq_assert (rc != -1);
     }
+
+    ++random_refcount;
+  } else {
+    zmq::scoped_lock_t locker(random_sync);
+    --random_refcount;
+
+    if (random_refcount == 0) {
+      randombytes_close();
+    }
+  }
 
 #elif defined(ZMQ_USE_LIBSODIUM)
-    if (init_) {
-        int rc = sodium_init ();
-        zmq_assert (rc != -1);
-    } else {
-        randombytes_close ();
-    }
+  if (init_) {
+      int rc = sodium_init ();
+      zmq_assert (rc != -1);
+  } else {
+      randombytes_close ();
+  }
 #else
-    LIBZMQ_UNUSED (init_);
+  LIBZMQ_UNUSED (init_);
 #endif
 }
 
-void zmq::random_open ()
-{
-    manage_random (true);
+void zmq::random_open() {
+  manage_random(true);
 }
 
-void zmq::random_close ()
-{
-    manage_random (false);
+void zmq::random_close() {
+  manage_random(false);
 }

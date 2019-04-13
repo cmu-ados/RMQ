@@ -58,37 +58,36 @@ static volatile int zap_deny_all = 0;
 //  Read one event off the monitor socket; return value and address
 //  by reference, if not null, and event number by value. Returns -1
 //  in case of error.
-static int get_monitor_event (void *monitor_, int *value_, char **address_)
-{
-    //  First frame in message contains event number and value
-    zmq_msg_t msg;
-    zmq_msg_init (&msg);
-    if (zmq_msg_recv (&msg, monitor_, 0) == -1)
-        return -1; //  Interruped, presumably
-    assert (zmq_msg_more (&msg));
+static int get_monitor_event(void *monitor_, int *value_, char **address_) {
+  //  First frame in message contains event number and value
+  zmq_msg_t msg;
+  zmq_msg_init(&msg);
+  if (zmq_msg_recv(&msg, monitor_, 0) == -1)
+    return -1; //  Interruped, presumably
+  assert (zmq_msg_more(&msg));
 
-    uint8_t *data = (uint8_t *) zmq_msg_data (&msg);
-    uint16_t event = *(uint16_t *) (data);
-    if (value_)
-        *value_ = *(uint32_t *) (data + 2);
-    zmq_msg_close (&msg);
+  uint8_t *data = (uint8_t *) zmq_msg_data(&msg);
+  uint16_t event = *(uint16_t *) (data);
+  if (value_)
+    *value_ = *(uint32_t *) (data + 2);
+  zmq_msg_close(&msg);
 
-    //  Second frame in message contains event address
-    zmq_msg_init (&msg);
-    if (zmq_msg_recv (&msg, monitor_, 0) == -1)
-        return -1; //  Interruped, presumably
-    assert (!zmq_msg_more (&msg));
+  //  Second frame in message contains event address
+  zmq_msg_init(&msg);
+  if (zmq_msg_recv(&msg, monitor_, 0) == -1)
+    return -1; //  Interruped, presumably
+  assert (!zmq_msg_more(&msg));
 
-    if (address_) {
-        uint8_t *data = (uint8_t *) zmq_msg_data (&msg);
-        size_t size = zmq_msg_size (&msg);
-        *address_ = (char *) malloc (size + 1);
-        memcpy (*address_, data, size);
-        *address_[size] = 0;
-    }
-    zmq_msg_close (&msg);
+  if (address_) {
+    uint8_t *data = (uint8_t *) zmq_msg_data(&msg);
+    size_t size = zmq_msg_size(&msg);
+    *address_ = (char *) malloc(size + 1);
+    memcpy(*address_, data, size);
+    *address_[size] = 0;
+  }
+  zmq_msg_close(&msg);
 
-    return event;
+  return event;
 }
 
 //  --------------------------------------------------------------------------
@@ -96,257 +95,250 @@ static int get_monitor_event (void *monitor_, int *value_, char **address_)
 //  each client connection).
 //  N.B. on failure, each crypto type in keytab will be tried
 
-static void zap_handler (void *handler_)
-{
-    //  Process ZAP requests forever
-    while (true) {
-        char *version = s_recv (handler_);
-        if (!version)
-            break; //  Terminating
+static void zap_handler(void *handler_) {
+  //  Process ZAP requests forever
+  while (true) {
+    char *version = s_recv(handler_);
+    if (!version)
+      break; //  Terminating
 
-        char *sequence = s_recv (handler_);
-        char *domain = s_recv (handler_);
-        char *address = s_recv (handler_);
-        char *routing_id = s_recv (handler_);
-        char *mechanism = s_recv (handler_);
-        char *principal = s_recv (handler_);
+    char *sequence = s_recv(handler_);
+    char *domain = s_recv(handler_);
+    char *address = s_recv(handler_);
+    char *routing_id = s_recv(handler_);
+    char *mechanism = s_recv(handler_);
+    char *principal = s_recv(handler_);
 
-        assert (streq (version, "1.0"));
-        assert (streq (mechanism, "GSSAPI"));
+    assert (streq(version, "1.0"));
+    assert (streq(mechanism, "GSSAPI"));
 
-        s_sendmore (handler_, version);
-        s_sendmore (handler_, sequence);
+    s_sendmore(handler_, version);
+    s_sendmore(handler_, sequence);
 
-        if (!zap_deny_all) {
-            s_sendmore (handler_, "200");
-            s_sendmore (handler_, "OK");
-            s_sendmore (handler_, "anonymous");
-            s_send (handler_, "");
-            //fprintf (stderr, "ALLOW %s\n", principal);
-        } else {
-            s_sendmore (handler_, "400");
-            s_sendmore (handler_, "Denied");
-            s_sendmore (handler_, "");
-            s_send (handler_, "");
-            //fprintf (stderr, "DENY %s\n", principal);
-        }
-        free (version);
-        free (sequence);
-        free (domain);
-        free (address);
-        free (routing_id);
-        free (mechanism);
-        free (principal);
+    if (!zap_deny_all) {
+      s_sendmore(handler_, "200");
+      s_sendmore(handler_, "OK");
+      s_sendmore(handler_, "anonymous");
+      s_send(handler_, "");
+      //fprintf (stderr, "ALLOW %s\n", principal);
+    } else {
+      s_sendmore(handler_, "400");
+      s_sendmore(handler_, "Denied");
+      s_sendmore(handler_, "");
+      s_send(handler_, "");
+      //fprintf (stderr, "DENY %s\n", principal);
     }
-    zmq_close (handler_);
+    free(version);
+    free(sequence);
+    free(domain);
+    free(address);
+    free(routing_id);
+    free(mechanism);
+    free(principal);
+  }
+  zmq_close(handler_);
 }
 
-void test_valid_creds (void *ctx_,
-                       void *server_,
-                       void *server_mon_,
-                       char *endpoint_)
-{
-    void *client = zmq_socket (ctx_, ZMQ_DEALER);
-    assert (client);
-    int rc = zmq_setsockopt (client, ZMQ_GSSAPI_SERVICE_PRINCIPAL, name,
-                             strlen (name) + 1);
-    assert (rc == 0);
-    rc = zmq_setsockopt (client, ZMQ_GSSAPI_PRINCIPAL, name, strlen (name) + 1);
-    assert (rc == 0);
-    int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
-    rc = zmq_setsockopt (client, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
-                         sizeof (name_type));
-    assert (rc == 0);
-    rc = zmq_connect (client, endpoint_);
-    assert (rc == 0);
+void test_valid_creds(void *ctx_,
+                      void *server_,
+                      void *server_mon_,
+                      char *endpoint_) {
+  void *client = zmq_socket(ctx_, ZMQ_DEALER);
+  assert (client);
+  int rc = zmq_setsockopt(client, ZMQ_GSSAPI_SERVICE_PRINCIPAL, name,
+                          strlen(name) + 1);
+  assert (rc == 0);
+  rc = zmq_setsockopt(client, ZMQ_GSSAPI_PRINCIPAL, name, strlen(name) + 1);
+  assert (rc == 0);
+  int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
+  rc = zmq_setsockopt(client, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
+                      sizeof(name_type));
+  assert (rc == 0);
+  rc = zmq_connect(client, endpoint_);
+  assert (rc == 0);
 
-    bounce (server_, client);
-    rc = zmq_close (client);
-    assert (rc == 0);
+  bounce(server_, client);
+  rc = zmq_close(client);
+  assert (rc == 0);
 
-    int event = get_monitor_event (server_mon_, NULL, NULL);
-    assert (event == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
+  int event = get_monitor_event(server_mon_, NULL, NULL);
+  assert (event == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
 }
 
 //  Check security with valid but unauthorized credentials
 //  Note: ZAP may see multiple requests - after a failure, client will
 //  fall back to other crypto types for principal, if available.
-void test_unauth_creds (void *ctx_,
-                        void *server_,
-                        void *server_mon_,
-                        char *endpoint_)
-{
-    void *client = zmq_socket (ctx_, ZMQ_DEALER);
-    assert (client);
-    int rc = zmq_setsockopt (client, ZMQ_GSSAPI_SERVICE_PRINCIPAL, name,
-                             strlen (name) + 1);
-    assert (rc == 0);
-    rc = zmq_setsockopt (client, ZMQ_GSSAPI_PRINCIPAL, name, strlen (name) + 1);
-    assert (rc == 0);
-    int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
-    rc = zmq_setsockopt (client, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
-                         sizeof (name_type));
-    assert (rc == 0);
-    zap_deny_all = 1;
-    rc = zmq_connect (client, endpoint_);
-    assert (rc == 0);
+void test_unauth_creds(void *ctx_,
+                       void *server_,
+                       void *server_mon_,
+                       char *endpoint_) {
+  void *client = zmq_socket(ctx_, ZMQ_DEALER);
+  assert (client);
+  int rc = zmq_setsockopt(client, ZMQ_GSSAPI_SERVICE_PRINCIPAL, name,
+                          strlen(name) + 1);
+  assert (rc == 0);
+  rc = zmq_setsockopt(client, ZMQ_GSSAPI_PRINCIPAL, name, strlen(name) + 1);
+  assert (rc == 0);
+  int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
+  rc = zmq_setsockopt(client, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
+                      sizeof(name_type));
+  assert (rc == 0);
+  zap_deny_all = 1;
+  rc = zmq_connect(client, endpoint_);
+  assert (rc == 0);
 
-    expect_bounce_fail (server_, client);
-    close_zero_linger (client);
+  expect_bounce_fail(server_, client);
+  close_zero_linger(client);
 
-    int event = get_monitor_event (server_mon_, NULL, NULL);
-    assert (event == ZMQ_EVENT_HANDSHAKE_FAILED_AUTH);
+  int event = get_monitor_event(server_mon_, NULL, NULL);
+  assert (event == ZMQ_EVENT_HANDSHAKE_FAILED_AUTH);
 }
 
 //  Check GSSAPI security with NULL client credentials
 //  This must be caught by the gssapi_server class, not passed to ZAP
-void test_null_creds (void *ctx_,
-                      void *server_,
-                      void *server_mon_,
-                      char *endpoint_)
-{
-    void *client = zmq_socket (ctx_, ZMQ_DEALER);
-    assert (client);
-    int rc = zmq_connect (client, endpoint_);
-    assert (rc == 0);
-    expect_bounce_fail (server_, client);
-    close_zero_linger (client);
+void test_null_creds(void *ctx_,
+                     void *server_,
+                     void *server_mon_,
+                     char *endpoint_) {
+  void *client = zmq_socket(ctx_, ZMQ_DEALER);
+  assert (client);
+  int rc = zmq_connect(client, endpoint_);
+  assert (rc == 0);
+  expect_bounce_fail(server_, client);
+  close_zero_linger(client);
 
-    int error;
-    int event = get_monitor_event (server_mon_, &error, NULL);
-    assert (event == ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL);
-    assert (error == ZMQ_PROTOCOL_ERROR_ZMTP_MECHANISM_MISMATCH);
+  int error;
+  int event = get_monitor_event(server_mon_, &error, NULL);
+  assert (event == ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL);
+  assert (error == ZMQ_PROTOCOL_ERROR_ZMTP_MECHANISM_MISMATCH);
 }
 
 //  Check GSSAPI security with PLAIN client credentials
 //  This must be caught by the curve_server class, not passed to ZAP
-void test_plain_creds (void *ctx_,
-                       void *server_,
-                       void *server_mon_,
-                       char *endpoint_)
-{
-    void *client = zmq_socket (ctx_, ZMQ_DEALER);
-    assert (client);
-    int rc = zmq_setsockopt (client, ZMQ_PLAIN_USERNAME, "admin", 5);
-    assert (rc == 0);
-    rc = zmq_setsockopt (client, ZMQ_PLAIN_PASSWORD, "password", 8);
-    assert (rc == 0);
-    rc = zmq_connect (client, endpoint_);
-    assert (rc == 0);
-    expect_bounce_fail (server_, client);
-    close_zero_linger (client);
+void test_plain_creds(void *ctx_,
+                      void *server_,
+                      void *server_mon_,
+                      char *endpoint_) {
+  void *client = zmq_socket(ctx_, ZMQ_DEALER);
+  assert (client);
+  int rc = zmq_setsockopt(client, ZMQ_PLAIN_USERNAME, "admin", 5);
+  assert (rc == 0);
+  rc = zmq_setsockopt(client, ZMQ_PLAIN_PASSWORD, "password", 8);
+  assert (rc == 0);
+  rc = zmq_connect(client, endpoint_);
+  assert (rc == 0);
+  expect_bounce_fail(server_, client);
+  close_zero_linger(client);
 }
 
 // Unauthenticated messages from a vanilla socket shouldn't be received
-void test_vanilla_socket (void *ctx_,
-                          void *server_,
-                          void *server_mon_,
-                          char *endpoint_)
-{
-    struct sockaddr_in ip4addr;
-    int s;
-    unsigned short int port;
-    int rc = sscanf (endpoint_, "tcp://127.0.0.1:%hu", &port);
-    assert (rc == 1);
-    ip4addr.sin_family = AF_INET;
-    ip4addr.sin_port = htons (port);
+void test_vanilla_socket(void *ctx_,
+                         void *server_,
+                         void *server_mon_,
+                         char *endpoint_) {
+  struct sockaddr_in ip4addr;
+  int s;
+  unsigned short int port;
+  int rc = sscanf(endpoint_, "tcp://127.0.0.1:%hu", &port);
+  assert (rc == 1);
+  ip4addr.sin_family = AF_INET;
+  ip4addr.sin_port = htons (port);
 #if defined(ZMQ_HAVE_WINDOWS) && (_WIN32_WINNT < 0x0600)
-    ip4addr.sin_addr.s_addr = inet_addr ("127.0.0.1");
+  ip4addr.sin_addr.s_addr = inet_addr ("127.0.0.1");
 #else
-    inet_pton (AF_INET, "127.0.0.1", &ip4addr.sin_addr);
+  inet_pton(AF_INET, "127.0.0.1", &ip4addr.sin_addr);
 #endif
 
-    s = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    rc = connect (s, (struct sockaddr *) &ip4addr, sizeof (ip4addr));
-    assert (rc > -1);
-    // send anonymous ZMTP/1.0 greeting
-    send (s, "\x01\x00", 2, 0);
-    // send sneaky message that shouldn't be received
-    send (s, "\x08\x00sneaky\0", 9, 0);
-    int timeout = 250;
-    zmq_setsockopt (server_, ZMQ_RCVTIMEO, &timeout, sizeof (timeout));
-    char *buf = s_recv (server_);
-    if (buf != NULL) {
-        printf ("Received unauthenticated message: %s\n", buf);
-        assert (buf == NULL);
-    }
-    close (s);
+  s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  rc = connect(s, (struct sockaddr *) &ip4addr, sizeof(ip4addr));
+  assert (rc > -1);
+  // send anonymous ZMTP/1.0 greeting
+  send(s, "\x01\x00", 2, 0);
+  // send sneaky message that shouldn't be received
+  send(s, "\x08\x00sneaky\0", 9, 0);
+  int timeout = 250;
+  zmq_setsockopt(server_, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
+  char *buf = s_recv(server_);
+  if (buf != NULL) {
+    printf("Received unauthenticated message: %s\n", buf);
+    assert (buf == NULL);
+  }
+  close(s);
 }
 
-int main (void)
-{
-    if (!getenv ("KRB5_KTNAME") || !getenv ("KRB5_CLIENT_KTNAME")) {
-        printf ("KRB5 environment unavailable, skipping test\n");
-        return 77; // SKIP
-    }
-    // Avoid entanglements with user's credential cache
-    setenv ("KRB5CCNAME", "MEMORY", 1);
+int main(void) {
+  if (!getenv("KRB5_KTNAME") || !getenv("KRB5_CLIENT_KTNAME")) {
+    printf("KRB5 environment unavailable, skipping test\n");
+    return 77; // SKIP
+  }
+  // Avoid entanglements with user's credential cache
+  setenv("KRB5CCNAME", "MEMORY", 1);
 
-    setup_test_environment ();
-    void *ctx = zmq_ctx_new ();
-    assert (ctx);
+  setup_test_environment();
+  void *ctx = zmq_ctx_new();
+  assert (ctx);
 
-    size_t len = MAX_SOCKET_STRING;
-    char my_endpoint[MAX_SOCKET_STRING];
+  size_t len = MAX_SOCKET_STRING;
+  char my_endpoint[MAX_SOCKET_STRING];
 
-    //  Spawn ZAP handler
-    //  We create and bind ZAP socket in main thread to avoid case
-    //  where child thread does not start up fast enough.
-    void *handler = zmq_socket (ctx, ZMQ_REP);
-    assert (handler);
-    int rc = zmq_bind (handler, "inproc://zeromq.zap.01");
-    assert (rc == 0);
-    void *zap_thread = zmq_threadstart (&zap_handler, handler);
+  //  Spawn ZAP handler
+  //  We create and bind ZAP socket in main thread to avoid case
+  //  where child thread does not start up fast enough.
+  void *handler = zmq_socket(ctx, ZMQ_REP);
+  assert (handler);
+  int rc = zmq_bind(handler, "inproc://zeromq.zap.01");
+  assert (rc == 0);
+  void *zap_thread = zmq_threadstart(&zap_handler, handler);
 
-    //  Server socket will accept connections
-    void *server = zmq_socket (ctx, ZMQ_DEALER);
-    assert (server);
-    int as_server = 1;
-    rc = zmq_setsockopt (server, ZMQ_GSSAPI_SERVER, &as_server, sizeof (int));
-    assert (rc == 0);
-    rc = zmq_setsockopt (server, ZMQ_GSSAPI_PRINCIPAL, name, strlen (name) + 1);
-    assert (rc == 0);
-    int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
-    rc = zmq_setsockopt (server, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
-                         sizeof (name_type));
-    assert (rc == 0);
-    rc = zmq_bind (server, "tcp://127.0.0.1:*");
-    assert (rc == 0);
-    rc = zmq_getsockopt (server, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
-    assert (rc == 0);
+  //  Server socket will accept connections
+  void *server = zmq_socket(ctx, ZMQ_DEALER);
+  assert (server);
+  int as_server = 1;
+  rc = zmq_setsockopt(server, ZMQ_GSSAPI_SERVER, &as_server, sizeof(int));
+  assert (rc == 0);
+  rc = zmq_setsockopt(server, ZMQ_GSSAPI_PRINCIPAL, name, strlen(name) + 1);
+  assert (rc == 0);
+  int name_type = ZMQ_GSSAPI_NT_HOSTBASED;
+  rc = zmq_setsockopt(server, ZMQ_GSSAPI_PRINCIPAL_NAMETYPE, &name_type,
+                      sizeof(name_type));
+  assert (rc == 0);
+  rc = zmq_bind(server, "tcp://127.0.0.1:*");
+  assert (rc == 0);
+  rc = zmq_getsockopt(server, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
+  assert (rc == 0);
 
-    //  Monitor handshake events on the server
-    rc = zmq_socket_monitor (server, "inproc://monitor-server",
-                             ZMQ_EVENT_HANDSHAKE_SUCCEEDED
-                               | ZMQ_EVENT_HANDSHAKE_FAILED_AUTH
-                               | ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL);
-    assert (rc == 0);
+  //  Monitor handshake events on the server
+  rc = zmq_socket_monitor(server, "inproc://monitor-server",
+                          ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+                              | ZMQ_EVENT_HANDSHAKE_FAILED_AUTH
+                              | ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL);
+  assert (rc == 0);
 
-    //  Create socket for collecting monitor events
-    void *server_mon = NULL;
-    server_mon = zmq_socket (ctx, ZMQ_PAIR);
-    assert (server_mon);
+  //  Create socket for collecting monitor events
+  void *server_mon = NULL;
+  server_mon = zmq_socket(ctx, ZMQ_PAIR);
+  assert (server_mon);
 
-    //  Connect it to the inproc endpoints so they'll get events
-    rc = zmq_connect (server_mon, "inproc://monitor-server");
-    assert (rc == 0);
+  //  Connect it to the inproc endpoints so they'll get events
+  rc = zmq_connect(server_mon, "inproc://monitor-server");
+  assert (rc == 0);
 
-    //  Attempt various connections
-    test_valid_creds (ctx, server, server_mon, my_endpoint);
-    test_null_creds (ctx, server, server_mon, my_endpoint);
-    test_plain_creds (ctx, server, server_mon, my_endpoint);
-    test_vanilla_socket (ctx, server, server_mon, my_endpoint);
-    test_unauth_creds (ctx, server, server_mon, my_endpoint);
+  //  Attempt various connections
+  test_valid_creds(ctx, server, server_mon, my_endpoint);
+  test_null_creds(ctx, server, server_mon, my_endpoint);
+  test_plain_creds(ctx, server, server_mon, my_endpoint);
+  test_vanilla_socket(ctx, server, server_mon, my_endpoint);
+  test_unauth_creds(ctx, server, server_mon, my_endpoint);
 
-    //  Shutdown
-    close_zero_linger (server_mon);
-    rc = zmq_close (server);
-    assert (rc == 0);
-    rc = zmq_ctx_term (ctx);
-    assert (rc == 0);
+  //  Shutdown
+  close_zero_linger(server_mon);
+  rc = zmq_close(server);
+  assert (rc == 0);
+  rc = zmq_ctx_term(ctx);
+  assert (rc == 0);
 
-    //  Wait until ZAP handler terminates
-    zmq_threadclose (zap_thread);
+  //  Wait until ZAP handler terminates
+  zmq_threadclose(zap_thread);
 
-    return 0;
+  return 0;
 }

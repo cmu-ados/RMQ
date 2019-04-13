@@ -30,83 +30,79 @@
 #include "testutil.hpp"
 #include "testutil_unity.hpp"
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-static void bounce_fail (void *server_, void *client_)
-{
-    const char *content = "12345678ABCDEFGH12345678abcdefgh";
-    char buffer[32];
+static void bounce_fail(void *server_, void *client_) {
+  const char *content = "12345678ABCDEFGH12345678abcdefgh";
+  char buffer[32];
 
-    //  Send message from client to server
-    send_string_expect_success (client_, content, ZMQ_SNDMORE);
-    send_string_expect_success (client_, content, 0);
+  //  Send message from client to server
+  send_string_expect_success(client_, content, ZMQ_SNDMORE);
+  send_string_expect_success(client_, content, 0);
 
-    //  Receive message at server side (should not succeed)
-    int timeout = SETTLE_TIME;
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (server_, ZMQ_RCVTIMEO, &timeout, sizeof (int)));
-    TEST_ASSERT_FAILURE_ERRNO (EAGAIN, zmq_recv (server_, buffer, 32, 0));
+  //  Receive message at server side (should not succeed)
+  int timeout = SETTLE_TIME;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(server_, ZMQ_RCVTIMEO, &timeout, sizeof(int)));
+  TEST_ASSERT_FAILURE_ERRNO (EAGAIN, zmq_recv(server_, buffer, 32, 0));
 
-    //  Send message from server to client to test other direction
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (server_, ZMQ_SNDTIMEO, &timeout, sizeof (int)));
-    TEST_ASSERT_FAILURE_ERRNO (EAGAIN,
-                               zmq_send (server_, content, 32, ZMQ_SNDMORE));
+  //  Send message from server to client to test other direction
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(server_, ZMQ_SNDTIMEO, &timeout, sizeof(int)));
+  TEST_ASSERT_FAILURE_ERRNO (EAGAIN,
+                             zmq_send(server_, content, 32, ZMQ_SNDMORE));
 }
 
-template <class T>
+template<class T>
 static void
-run_test (int opt_, T optval_, int expected_error_, int bounce_test_)
-{
-    void *sb = test_context_socket (ZMQ_DEALER);
+run_test(int opt_, T optval_, int expected_error_, int bounce_test_) {
+  void *sb = test_context_socket(ZMQ_DEALER);
 
-    if (opt_) {
-        const int rc = zmq_setsockopt (sb, opt_, &optval_, sizeof (optval_));
-        if (expected_error_) {
-            TEST_ASSERT_FAILURE_ERRNO (expected_error_, rc);
-        } else {
-            TEST_ASSERT_SUCCESS_ERRNO (rc);
-        }
+  if (opt_) {
+    const int rc = zmq_setsockopt(sb, opt_, &optval_, sizeof(optval_));
+    if (expected_error_) {
+      TEST_ASSERT_FAILURE_ERRNO (expected_error_, rc);
+    } else {
+      TEST_ASSERT_SUCCESS_ERRNO (rc);
     }
+  }
 
-    void *sc = test_context_socket (ZMQ_DEALER);
+  void *sc = test_context_socket(ZMQ_DEALER);
 
-    // If a test fails, don't hang for too long
-    int timeout = 2500;
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sb, ZMQ_RCVTIMEO, &timeout, sizeof (int)));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sb, ZMQ_SNDTIMEO, &timeout, sizeof (int)));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sc, ZMQ_RCVTIMEO, &timeout, sizeof (int)));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sc, ZMQ_SNDTIMEO, &timeout, sizeof (int)));
-    int interval = -1;
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sc, ZMQ_RECONNECT_IVL, &interval, sizeof (int)));
+  // If a test fails, don't hang for too long
+  int timeout = 2500;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sb, ZMQ_RCVTIMEO, &timeout, sizeof(int)));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sb, ZMQ_SNDTIMEO, &timeout, sizeof(int)));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sc, ZMQ_RCVTIMEO, &timeout, sizeof(int)));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sc, ZMQ_SNDTIMEO, &timeout, sizeof(int)));
+  int interval = -1;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sc, ZMQ_RECONNECT_IVL, &interval, sizeof(int)));
 
-    if (bounce_test_) {
-        const char *endpoint = "ipc://test_filter_ipc.sock";
-        TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, endpoint));
-        TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, endpoint));
+  if (bounce_test_) {
+    const char *endpoint = "ipc://test_filter_ipc.sock";
+    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, endpoint));
+    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, endpoint));
 
-        if (bounce_test_ > 0)
-            bounce (sb, sc);
-        else
-            bounce_fail (sb, sc);
-    }
+    if (bounce_test_ > 0)
+      bounce(sb, sc);
+    else
+      bounce_fail(sb, sc);
+  }
 
-    // TODO only use zero linger when bounce_test_ < 0?
-    test_context_socket_close_zero_linger (sc);
-    test_context_socket_close_zero_linger (sb);
+  // TODO only use zero linger when bounce_test_ < 0?
+  test_context_socket_close_zero_linger(sc);
+  test_context_socket_close_zero_linger(sb);
 }
 
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
@@ -130,9 +126,8 @@ void init_groups ()
 }
 #endif
 
-void test_no_filters ()
-{
-    run_test<int> (0, 0, 0, 1);
+void test_no_filters() {
+  run_test<int>(0, 0, 0, 1);
 }
 
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
@@ -174,50 +169,46 @@ void test_filter_with_pid_fails ()
 }
 #endif
 #else
-void test_filter_with_zero_uid_fails ()
-{
-    run_test<uid_t> (ZMQ_IPC_FILTER_UID, 0, EINVAL, 0);
+void test_filter_with_zero_uid_fails() {
+  run_test<uid_t>(ZMQ_IPC_FILTER_UID, 0, EINVAL, 0);
 }
-void test_filter_with_zero_gid_fails ()
-{
-    run_test<gid_t> (ZMQ_IPC_FILTER_GID, 0, EINVAL, 0);
+void test_filter_with_zero_gid_fails() {
+  run_test<gid_t>(ZMQ_IPC_FILTER_GID, 0, EINVAL, 0);
 }
-void test_filter_with_zero_pid_fails ()
-{
-    run_test<pid_t> (ZMQ_IPC_FILTER_PID, 0, EINVAL, 0);
+void test_filter_with_zero_pid_fails() {
+  run_test<pid_t>(ZMQ_IPC_FILTER_PID, 0, EINVAL, 0);
 }
 #endif // defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
 
-int main (void)
-{
+int main(void) {
 #if !defined(ZMQ_HAVE_WINDOWS)
-    setup_test_environment ();
+  setup_test_environment();
 
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
-    init_groups ();
+  init_groups ();
 #endif
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_no_filters);
+  UNITY_BEGIN ();
+  RUN_TEST (test_no_filters);
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
-    RUN_TEST (test_filter_with_process_owner_uid);
-    RUN_TEST (test_filter_with_possibly_nonexistent_uid);
-    RUN_TEST (test_filter_with_process_owner_gid);
-    RUN_TEST (test_filter_with_supplemental_process_owner_gid);
-    RUN_TEST (test_filter_with_possibly_nonexistent_gid);
+  RUN_TEST (test_filter_with_process_owner_uid);
+  RUN_TEST (test_filter_with_possibly_nonexistent_uid);
+  RUN_TEST (test_filter_with_process_owner_gid);
+  RUN_TEST (test_filter_with_supplemental_process_owner_gid);
+  RUN_TEST (test_filter_with_possibly_nonexistent_gid);
 #if defined ZMQ_HAVE_SO_PEERCRED
-    RUN_TEST (test_filter_with_current_process_pid);
-    RUN_TEST (test_filter_with_possibly_nonexistent_pid);
+  RUN_TEST (test_filter_with_current_process_pid);
+  RUN_TEST (test_filter_with_possibly_nonexistent_pid);
 #else
-    RUN_TEST (test_filter_with_pid_fails);
+  RUN_TEST (test_filter_with_pid_fails);
 #endif
 #else
-    RUN_TEST (test_filter_with_zero_uid_fails);
-    RUN_TEST (test_filter_with_zero_gid_fails);
-    RUN_TEST (test_filter_with_zero_pid_fails);
+  RUN_TEST (test_filter_with_zero_uid_fails);
+  RUN_TEST (test_filter_with_zero_gid_fails);
+  RUN_TEST (test_filter_with_zero_pid_fails);
 #endif // defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
-    return UNITY_END ();
+  return UNITY_END ();
 #else
-    return 0;
+  return 0;
 #endif
 }

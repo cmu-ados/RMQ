@@ -37,79 +37,74 @@
 #include "platform.hpp"
 #include "err.hpp"
 
-namespace zmq
-{
-template <typename T, size_t S> class fast_vector_t
-{
-  public:
-    explicit fast_vector_t (const size_t nitems_)
-    {
-        if (nitems_ > S) {
-            _buf = static_cast<T *> (malloc (nitems_ * sizeof (T)));
-            //  TODO since this function is called by a client, we could return errno == ENOMEM here
-            alloc_assert (_buf);
-        } else {
-            _buf = _static_buf;
-        }
+namespace zmq {
+template<typename T, size_t S>
+class fast_vector_t {
+ public:
+  explicit fast_vector_t(const size_t nitems_) {
+    if (nitems_ > S) {
+      _buf = static_cast<T *> (malloc(nitems_ * sizeof(T)));
+      //  TODO since this function is called by a client, we could return errno == ENOMEM here
+      alloc_assert (_buf);
+    } else {
+      _buf = _static_buf;
     }
+  }
 
-    T &operator[] (const size_t i) { return _buf[i]; }
+  T &operator[](const size_t i) { return _buf[i]; }
 
-    ~fast_vector_t ()
-    {
-        if (_buf != _static_buf)
-            free (_buf);
-    }
+  ~fast_vector_t() {
+    if (_buf != _static_buf)
+      free(_buf);
+  }
 
-  private:
-    fast_vector_t (const fast_vector_t &);
-    fast_vector_t &operator= (const fast_vector_t &);
+ private:
+  fast_vector_t(const fast_vector_t &);
+  fast_vector_t &operator=(const fast_vector_t &);
 
-    T _static_buf[S];
-    T *_buf;
+  T _static_buf[S];
+  T *_buf;
 };
 
-template <typename T, size_t S> class resizable_fast_vector_t
-{
-  public:
-    resizable_fast_vector_t () : _dynamic_buf (NULL) {}
+template<typename T, size_t S>
+class resizable_fast_vector_t {
+ public:
+  resizable_fast_vector_t() : _dynamic_buf(NULL) {}
 
-    void resize (const size_t nitems_)
-    {
-        if (_dynamic_buf)
-            _dynamic_buf->resize (nitems_);
-        if (nitems_ > S) {
-            _dynamic_buf = new (std::nothrow) std::vector<T>;
-            //  TODO since this function is called by a client, we could return errno == ENOMEM here
-            alloc_assert (_dynamic_buf);
-        }
+  void resize(const size_t nitems_) {
+    if (_dynamic_buf)
+      _dynamic_buf->resize(nitems_);
+    if (nitems_ > S) {
+      _dynamic_buf = new(std::nothrow) std::vector<T>;
+      //  TODO since this function is called by a client, we could return errno == ENOMEM here
+      alloc_assert (_dynamic_buf);
     }
+  }
 
-    T *get_buf ()
-    {
-        // e.g. MSVC 2008 does not have std::vector::data, so we use &...[0]
-        return _dynamic_buf ? &(*_dynamic_buf)[0] : _static_buf;
-    }
+  T *get_buf() {
+    // e.g. MSVC 2008 does not have std::vector::data, so we use &...[0]
+    return _dynamic_buf ? &(*_dynamic_buf)[0] : _static_buf;
+  }
 
-    T &operator[] (const size_t i) { return get_buf ()[i]; }
+  T &operator[](const size_t i) { return get_buf()[i]; }
 
-    ~resizable_fast_vector_t () { delete _dynamic_buf; }
+  ~resizable_fast_vector_t() { delete _dynamic_buf; }
 
-  private:
-    resizable_fast_vector_t (const resizable_fast_vector_t &);
-    resizable_fast_vector_t &operator= (const resizable_fast_vector_t &);
+ private:
+  resizable_fast_vector_t(const resizable_fast_vector_t &);
+  resizable_fast_vector_t &operator=(const resizable_fast_vector_t &);
 
-    T _static_buf[S];
-    std::vector<T> *_dynamic_buf;
+  T _static_buf[S];
+  std::vector<T> *_dynamic_buf;
 };
 
 #if defined ZMQ_POLL_BASED_ON_POLL
 typedef int timeout_t;
 
-timeout_t compute_timeout (const bool first_pass_,
-                           const long timeout_,
-                           const uint64_t now_,
-                           const uint64_t end_);
+timeout_t compute_timeout(const bool first_pass_,
+                          const long timeout_,
+                          const uint64_t now_,
+                          const uint64_t end_);
 
 #elif defined ZMQ_POLL_BASED_ON_SELECT
 inline size_t valid_pollset_bytes (const fd_set &pollset_)

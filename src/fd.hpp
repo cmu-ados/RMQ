@@ -34,8 +34,7 @@
 #include "windows.hpp"
 #endif
 
-namespace zmq
-{
+namespace zmq {
 #ifdef ZMQ_HAVE_WINDOWS
 #if defined _MSC_VER && _MSC_VER <= 1400
 ///< \todo zmq.h uses SOCKET unconditionally, so probably VS versions before
@@ -58,9 +57,8 @@ enum
 #endif
 #else
 typedef int fd_t;
-enum
-{
-    retired_fd = -1
+enum {
+  retired_fd = -1
 };
 #endif
 }

@@ -33,70 +33,67 @@
 #include <stdlib.h>
 #include <vector>
 
-void test_system_max ()
-{
-    // Keep allocating sockets until we run out of system resources
-    const int no_of_sockets = 2 * 65536;
-    void *ctx = zmq_ctx_new ();
-    zmq_ctx_set (ctx, ZMQ_MAX_SOCKETS, no_of_sockets);
-    std::vector<void *> sockets;
+void test_system_max() {
+  // Keep allocating sockets until we run out of system resources
+  const int no_of_sockets = 2 * 65536;
+  void *ctx = zmq_ctx_new();
+  zmq_ctx_set(ctx, ZMQ_MAX_SOCKETS, no_of_sockets);
+  std::vector<void *> sockets;
 
-    while (true) {
-        void *socket = zmq_socket (ctx, ZMQ_PAIR);
-        if (!socket)
-            break;
-        sockets.push_back (socket);
-    }
-    assert (static_cast<int> (sockets.size ()) <= no_of_sockets);
-    printf ("Socket creation failed after %i sockets\n",
-            static_cast<int> (sockets.size ()));
+  while (true) {
+    void *socket = zmq_socket(ctx, ZMQ_PAIR);
+    if (!socket)
+      break;
+    sockets.push_back(socket);
+  }
+  assert (static_cast<int> (sockets.size()) <= no_of_sockets);
+  printf("Socket creation failed after %i sockets\n",
+         static_cast<int> (sockets.size()));
 
-    //  System is out of resources, further calls to zmq_socket should return NULL
-    for (unsigned int i = 0; i < 10; ++i) {
-        void *socket = zmq_socket (ctx, ZMQ_PAIR);
-        assert (socket == NULL);
-    }
-    // Clean up.
-    for (unsigned int i = 0; i < sockets.size (); ++i)
-        zmq_close (sockets[i]);
+  //  System is out of resources, further calls to zmq_socket should return NULL
+  for (unsigned int i = 0; i < 10; ++i) {
+    void *socket = zmq_socket(ctx, ZMQ_PAIR);
+    assert (socket == NULL);
+  }
+  // Clean up.
+  for (unsigned int i = 0; i < sockets.size(); ++i)
+    zmq_close(sockets[i]);
 
-    zmq_ctx_destroy (ctx);
+  zmq_ctx_destroy(ctx);
 }
 
-void test_zmq_default_max ()
-{
-    //  Keep allocating sockets until we hit the default limit
-    void *ctx = zmq_ctx_new ();
-    std::vector<void *> sockets;
+void test_zmq_default_max() {
+  //  Keep allocating sockets until we hit the default limit
+  void *ctx = zmq_ctx_new();
+  std::vector<void *> sockets;
 
-    while (true) {
-        void *socket = zmq_socket (ctx, ZMQ_PAIR);
-        if (!socket)
-            break;
-        sockets.push_back (socket);
-    }
-    //  We may stop sooner if system has fewer available sockets
-    assert (sockets.size () <= ZMQ_MAX_SOCKETS_DFLT);
+  while (true) {
+    void *socket = zmq_socket(ctx, ZMQ_PAIR);
+    if (!socket)
+      break;
+    sockets.push_back(socket);
+  }
+  //  We may stop sooner if system has fewer available sockets
+  assert (sockets.size() <= ZMQ_MAX_SOCKETS_DFLT);
 
-    //  Further calls to zmq_socket should return NULL
-    for (unsigned int i = 0; i < 10; ++i) {
-        void *socket = zmq_socket (ctx, ZMQ_PAIR);
-        assert (socket == NULL);
-    }
+  //  Further calls to zmq_socket should return NULL
+  for (unsigned int i = 0; i < 10; ++i) {
+    void *socket = zmq_socket(ctx, ZMQ_PAIR);
+    assert (socket == NULL);
+  }
 
-    //  Clean up
-    for (unsigned int i = 0; i < sockets.size (); ++i)
-        zmq_close (sockets[i]);
+  //  Clean up
+  for (unsigned int i = 0; i < sockets.size(); ++i)
+    zmq_close(sockets[i]);
 
-    zmq_ctx_destroy (ctx);
+  zmq_ctx_destroy(ctx);
 }
 
-int main (void)
-{
-    setup_test_environment ();
+int main(void) {
+  setup_test_environment();
 
-    test_system_max ();
-    test_zmq_default_max ();
+  test_system_max();
+  test_zmq_default_max();
 
-    return 0;
+  return 0;
 }

@@ -56,8 +56,7 @@ void initialise_network (void)
 
 #else
 
-void initialise_network (void)
-{
+void initialise_network(void) {
 }
 
 #endif
@@ -66,41 +65,40 @@ void initialise_network (void)
 //  problems. We're direct system calls when necessary. Some code may
 //  need wrapping to be properly portable.
 
-int main (void)
-{
-    initialise_network ();
+int main(void) {
+  initialise_network();
 
-    //  Check that we have local networking via ZeroMQ
-    void *ctx = zmq_ctx_new ();
-    assert (ctx);
-    void *dealer = zmq_socket (ctx, ZMQ_DEALER);
-    if (zmq_bind (dealer, "tcp://127.0.0.1:*") == -1) {
-        printf (
-          "E: Cannot find 127.0.0.1 -- your system does not have local\n");
-        printf (
-          "E: networking. Please fix this before running libzmq checks.\n");
-        return -1;
-    }
-    //  Check that we can create 1,000 sockets
-    fd_t handle[MAX_SOCKETS];
-    int count;
-    for (count = 0; count < MAX_SOCKETS; count++) {
-        handle[count] = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (handle[count] == -1) {
-            printf ("W: Only able to create %d sockets on this box\n", count);
-            printf (
-              "I: Tune your system to increase maximum allowed file handles\n");
+  //  Check that we have local networking via ZeroMQ
+  void *ctx = zmq_ctx_new();
+  assert (ctx);
+  void *dealer = zmq_socket(ctx, ZMQ_DEALER);
+  if (zmq_bind(dealer, "tcp://127.0.0.1:*") == -1) {
+    printf(
+        "E: Cannot find 127.0.0.1 -- your system does not have local\n");
+    printf(
+        "E: networking. Please fix this before running libzmq checks.\n");
+    return -1;
+  }
+  //  Check that we can create 1,000 sockets
+  fd_t handle[MAX_SOCKETS];
+  int count;
+  for (count = 0; count < MAX_SOCKETS; count++) {
+    handle[count] = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (handle[count] == -1) {
+      printf("W: Only able to create %d sockets on this box\n", count);
+      printf(
+          "I: Tune your system to increase maximum allowed file handles\n");
 #if !defined(ZMQ_HAVE_WINDOWS)
-            printf ("I: Run 'ulimit -n 1200' in bash\n");
+      printf("I: Run 'ulimit -n 1200' in bash\n");
 #endif
-            return -1;
-        }
+      return -1;
     }
-    //  Release the socket handles
-    for (count = 0; count < MAX_SOCKETS; count++) {
-        close (handle[count]);
-    }
+  }
+  //  Release the socket handles
+  for (count = 0; count < MAX_SOCKETS; count++) {
+    close(handle[count]);
+  }
 
-    zmq_close (dealer);
-    zmq_ctx_term (ctx);
+  zmq_close(dealer);
+  zmq_ctx_term(ctx);
 }

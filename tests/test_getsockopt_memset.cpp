@@ -24,41 +24,40 @@
 
 #include "testutil.hpp"
 
-int main (void)
-{
-    int64_t more;
-    size_t more_size = sizeof (more);
+int main(void) {
+  int64_t more;
+  size_t more_size = sizeof(more);
 
-    setup_test_environment ();
-    void *ctx = zmq_ctx_new ();
-    assert (ctx);
+  setup_test_environment();
+  void *ctx = zmq_ctx_new();
+  assert (ctx);
 
-    void *sb = zmq_socket (ctx, ZMQ_PUB);
-    assert (sb);
-    int rc = zmq_bind (sb, "inproc://a");
-    assert (rc == 0);
+  void *sb = zmq_socket(ctx, ZMQ_PUB);
+  assert (sb);
+  int rc = zmq_bind(sb, "inproc://a");
+  assert (rc == 0);
 
-    void *sc = zmq_socket (ctx, ZMQ_SUB);
-    assert (sc);
-    rc = zmq_connect (sc, "inproc://a");
-    assert (rc == 0);
+  void *sc = zmq_socket(ctx, ZMQ_SUB);
+  assert (sc);
+  rc = zmq_connect(sc, "inproc://a");
+  assert (rc == 0);
 
-    memset (&more, 0xFF, sizeof (int64_t));
-    zmq_getsockopt (sc, ZMQ_RCVMORE, &more, &more_size);
-    assert (more_size == sizeof (int));
-    assert (more == 0);
+  memset(&more, 0xFF, sizeof(int64_t));
+  zmq_getsockopt(sc, ZMQ_RCVMORE, &more, &more_size);
+  assert (more_size == sizeof(int));
+  assert (more == 0);
 
 
-    // Cleanup
+  // Cleanup
 
-    rc = zmq_close (sc);
-    assert (rc == 0);
+  rc = zmq_close(sc);
+  assert (rc == 0);
 
-    rc = zmq_close (sb);
-    assert (rc == 0);
+  rc = zmq_close(sb);
+  assert (rc == 0);
 
-    rc = zmq_ctx_term (ctx);
-    assert (rc == 0);
+  rc = zmq_ctx_term(ctx);
+  assert (rc == 0);
 
-    return 0;
+  return 0;
 }

@@ -32,44 +32,39 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-static void do_bind_and_verify (void *s_, const char *endpoint_)
-{
-    int rc = zmq_bind (s_, endpoint_);
-    assert (rc == 0);
-    char reported[255];
-    size_t size = 255;
-    rc = zmq_getsockopt (s_, ZMQ_LAST_ENDPOINT, reported, &size);
-    assert (rc == 0 && strcmp (reported, endpoint_) == 0);
+static void do_bind_and_verify(void *s_, const char *endpoint_) {
+  int rc = zmq_bind(s_, endpoint_);
+  assert (rc == 0);
+  char reported[255];
+  size_t size = 255;
+  rc = zmq_getsockopt(s_, ZMQ_LAST_ENDPOINT, reported, &size);
+  assert (rc == 0 && strcmp(reported, endpoint_) == 0);
 }
 
-void test_last_endpoint ()
-{
-    void *sb = test_context_socket (ZMQ_ROUTER);
-    int val = 0;
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sb, ZMQ_LINGER, &val, sizeof (val)));
+void test_last_endpoint() {
+  void *sb = test_context_socket(ZMQ_ROUTER);
+  int val = 0;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sb, ZMQ_LINGER, &val, sizeof(val)));
 
-    do_bind_and_verify (sb, ENDPOINT_1);
-    do_bind_and_verify (sb, ENDPOINT_2);
+  do_bind_and_verify(sb, ENDPOINT_1);
+  do_bind_and_verify(sb, ENDPOINT_2);
 
-    test_context_socket_close (sb);
+  test_context_socket_close(sb);
 }
 
-int main (void)
-{
-    setup_test_environment ();
+int main(void) {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_last_endpoint);
-    return UNITY_END ();
+  UNITY_BEGIN ();
+  RUN_TEST (test_last_endpoint);
+  return UNITY_END ();
 }

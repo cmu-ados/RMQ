@@ -264,90 +264,83 @@ extern "C" int pthread_cond_timedwait_monotonic_np (pthread_cond_t *,
                                                     const struct timespec *);
 #endif
 
-namespace zmq
-{
-class condition_variable_t
-{
-  public:
-    inline condition_variable_t ()
-    {
-        pthread_condattr_t attr;
-        pthread_condattr_init (&attr);
+namespace zmq {
+class condition_variable_t {
+ public:
+  inline condition_variable_t() {
+    pthread_condattr_t attr;
+    pthread_condattr_init(&attr);
 #if !defined(ZMQ_HAVE_OSX) && !defined(ANDROID_LEGACY)
-        pthread_condattr_setclock (&attr, CLOCK_MONOTONIC);
+    pthread_condattr_setclock (&attr, CLOCK_MONOTONIC);
 #endif
-        int rc = pthread_cond_init (&_cond, &attr);
-        posix_assert (rc);
-    }
+    int rc = pthread_cond_init(&_cond, &attr);
+    posix_assert (rc);
+  }
 
-    inline ~condition_variable_t ()
-    {
-        int rc = pthread_cond_destroy (&_cond);
-        posix_assert (rc);
-    }
+  inline ~condition_variable_t() {
+    int rc = pthread_cond_destroy(&_cond);
+    posix_assert (rc);
+  }
 
-    inline int wait (mutex_t *mutex_, int timeout_)
-    {
-        int rc;
+  inline int wait(mutex_t *mutex_, int timeout_) {
+    int rc;
 
-        if (timeout_ != -1) {
-            struct timespec timeout;
+    if (timeout_ != -1) {
+      struct timespec timeout;
 
 #ifdef ZMQ_HAVE_OSX
-            timeout.tv_sec = 0;
-            timeout.tv_nsec = 0;
+      timeout.tv_sec = 0;
+      timeout.tv_nsec = 0;
 #else
-            clock_gettime (CLOCK_MONOTONIC, &timeout);
+      clock_gettime (CLOCK_MONOTONIC, &timeout);
 #endif
 
-            timeout.tv_sec += timeout_ / 1000;
-            timeout.tv_nsec += (timeout_ % 1000) * 1000000;
+      timeout.tv_sec += timeout_ / 1000;
+      timeout.tv_nsec += (timeout_ % 1000) * 1000000;
 
-            if (timeout.tv_nsec > 1000000000) {
-                timeout.tv_sec++;
-                timeout.tv_nsec -= 1000000000;
-            }
+      if (timeout.tv_nsec > 1000000000) {
+        timeout.tv_sec++;
+        timeout.tv_nsec -= 1000000000;
+      }
 #ifdef ZMQ_HAVE_OSX
-            rc = pthread_cond_timedwait_relative_np (
-              &_cond, mutex_->get_mutex (), &timeout);
+      rc = pthread_cond_timedwait_relative_np(
+          &_cond, mutex_->get_mutex(), &timeout);
 #elif defined(ANDROID_LEGACY)
-            rc = pthread_cond_timedwait_monotonic_np (
-              &_cond, mutex_->get_mutex (), &timeout);
+      rc = pthread_cond_timedwait_monotonic_np (
+        &_cond, mutex_->get_mutex (), &timeout);
 #else
-            rc =
-              pthread_cond_timedwait (&_cond, mutex_->get_mutex (), &timeout);
+      rc =
+        pthread_cond_timedwait (&_cond, mutex_->get_mutex (), &timeout);
 #endif
-        } else
-            rc = pthread_cond_wait (&_cond, mutex_->get_mutex ());
+    } else
+      rc = pthread_cond_wait(&_cond, mutex_->get_mutex());
 
-        if (rc == 0)
-            return 0;
+    if (rc == 0)
+      return 0;
 
-        if (rc == ETIMEDOUT) {
-            errno = EAGAIN;
-            return -1;
-        }
-
-        posix_assert (rc);
-        return -1;
+    if (rc == ETIMEDOUT) {
+      errno = EAGAIN;
+      return -1;
     }
 
-    inline void broadcast ()
-    {
-        int rc = pthread_cond_broadcast (&_cond);
-        posix_assert (rc);
-    }
+    posix_assert (rc);
+    return -1;
+  }
 
-  private:
-    pthread_cond_t _cond;
+  inline void broadcast() {
+    int rc = pthread_cond_broadcast(&_cond);
+    posix_assert (rc);
+  }
 
-    // Disable copy construction and assignment.
-    condition_variable_t (const condition_variable_t &);
-    const condition_variable_t &operator= (const condition_variable_t &);
+ private:
+  pthread_cond_t _cond;
+
+  // Disable copy construction and assignment.
+  condition_variable_t(const condition_variable_t &);
+  const condition_variable_t &operator=(const condition_variable_t &);
 };
 }
 
 #endif
-
 
 #endif

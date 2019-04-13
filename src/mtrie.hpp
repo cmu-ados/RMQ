@@ -38,12 +38,12 @@
 #define ZMQ_HAS_EXTERN_TEMPLATE 0
 #endif
 
-namespace zmq
-{
+namespace zmq {
 class pipe_t;
 
 #if ZMQ_HAS_EXTERN_TEMPLATE
-extern template class generic_mtrie_t<pipe_t>;
+extern template
+class generic_mtrie_t<pipe_t>;
 #endif
 
 typedef generic_mtrie_t<pipe_t> mtrie_t;

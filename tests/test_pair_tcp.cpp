@@ -30,18 +30,15 @@
 #include "testutil.hpp"
 #include "testutil_unity.hpp"
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-
-typedef void (*extra_func_t) (void *socket_);
+typedef void (*extra_func_t)(void *socket_);
 
 #ifdef ZMQ_BUILD_DRAFT
 void set_sockopt_fastpath (void *socket)
@@ -53,31 +50,29 @@ void set_sockopt_fastpath (void *socket)
 }
 #endif
 
-void test_pair_tcp (extra_func_t extra_func_ = NULL)
-{
-    void *sb = test_context_socket (ZMQ_PAIR);
+void test_pair_tcp(extra_func_t extra_func_ = NULL) {
+  void *sb = test_context_socket(ZMQ_PAIR);
 
-    if (extra_func_)
-        extra_func_ (sb);
+  if (extra_func_)
+    extra_func_(sb);
 
-    char my_endpoint[MAX_SOCKET_STRING];
-    bind_loopback_ipv4 (sb, my_endpoint, sizeof my_endpoint);
+  char my_endpoint[MAX_SOCKET_STRING];
+  bind_loopback_ipv4(sb, my_endpoint, sizeof my_endpoint);
 
-    void *sc = test_context_socket (ZMQ_PAIR);
-    if (extra_func_)
-        extra_func_ (sc);
+  void *sc = test_context_socket(ZMQ_PAIR);
+  if (extra_func_)
+    extra_func_(sc);
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, my_endpoint));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, my_endpoint));
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    test_context_socket_close (sc);
-    test_context_socket_close (sb);
+  test_context_socket_close(sc);
+  test_context_socket_close(sb);
 }
 
-void test_pair_tcp_regular ()
-{
-    test_pair_tcp ();
+void test_pair_tcp_regular() {
+  test_pair_tcp();
 }
 
 #ifdef ZMQ_BUILD_DRAFT
@@ -87,15 +82,14 @@ void test_pair_tcp_fastpath ()
 }
 #endif
 
-int main ()
-{
-    setup_test_environment ();
+int main() {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_pair_tcp_regular);
+  UNITY_BEGIN ();
+  RUN_TEST (test_pair_tcp_regular);
 #ifdef ZMQ_BUILD_DRAFT
-    RUN_TEST (test_pair_tcp_fastpath);
+  RUN_TEST (test_pair_tcp_fastpath);
 #endif
 
-    return UNITY_END ();
+  return UNITY_END ();
 }

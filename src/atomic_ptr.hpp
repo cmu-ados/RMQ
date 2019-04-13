@@ -37,7 +37,7 @@
 #elif defined ZMQ_HAVE_ATOMIC_INTRINSICS
 #define ZMQ_ATOMIC_PTR_INTRINSIC
 #elif (defined __cplusplus && __cplusplus >= 201103L)                          \
-  || (defined _MSC_VER && _MSC_VER >= 1900)
+ || (defined _MSC_VER && _MSC_VER >= 1900)
 #define ZMQ_ATOMIC_PTR_CXX11
 #elif (defined __i386__ || defined __x86_64__) && defined __GNUC__
 #define ZMQ_ATOMIC_PTR_X86
@@ -66,8 +66,7 @@
 #include <arch/atomic.h>
 #endif
 
-namespace zmq
-{
+namespace zmq {
 #if !defined ZMQ_ATOMIC_PTR_CXX11
 inline void *atomic_xchg_ptr (void **ptr_,
                               void *const val_
@@ -174,123 +173,117 @@ inline void *atomic_cas (void *volatile *ptr_,
 
 //  This class encapsulates several atomic operations on pointers.
 
-template <typename T> class atomic_ptr_t
-{
-  public:
-    //  Initialise atomic pointer
-    inline atomic_ptr_t () ZMQ_NOEXCEPT { _ptr = NULL; }
+template<typename T>
+class atomic_ptr_t {
+ public:
+  //  Initialise atomic pointer
+  inline atomic_ptr_t() ZMQ_NOEXCEPT { _ptr = NULL; }
 
-    //  Set value of atomic pointer in a non-threadsafe way
-    //  Use this function only when you are sure that at most one
-    //  thread is accessing the pointer at the moment.
-    inline void set (T *ptr_) ZMQ_NOEXCEPT { _ptr = ptr_; }
+  //  Set value of atomic pointer in a non-threadsafe way
+  //  Use this function only when you are sure that at most one
+  //  thread is accessing the pointer at the moment.
+  inline void set(T *ptr_) ZMQ_NOEXCEPT { _ptr = ptr_; }
 
-    //  Perform atomic 'exchange pointers' operation. Pointer is set
-    //  to the 'val_' value. Old value is returned.
-    inline T *xchg (T *val_) ZMQ_NOEXCEPT
-    {
+  //  Perform atomic 'exchange pointers' operation. Pointer is set
+  //  to the 'val_' value. Old value is returned.
+  inline T *xchg(T *val_) ZMQ_NOEXCEPT {
 #if defined ZMQ_ATOMIC_PTR_CXX11
-        return _ptr.exchange (val_, std::memory_order_acq_rel);
+    return _ptr.exchange(val_, std::memory_order_acq_rel);
 #else
-        return (T *) atomic_xchg_ptr ((void **) &_ptr, val_
+    return (T *) atomic_xchg_ptr ((void **) &_ptr, val_
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-                                      ,
-                                      _sync
+                                  ,
+                                  _sync
 #endif
-        );
+    );
 #endif
-    }
+  }
 
-    //  Perform atomic 'compare and swap' operation on the pointer.
-    //  The pointer is compared to 'cmp' argument and if they are
-    //  equal, its value is set to 'val_'. Old value of the pointer
-    //  is returned.
-    inline T *cas (T *cmp_, T *val_) ZMQ_NOEXCEPT
-    {
+  //  Perform atomic 'compare and swap' operation on the pointer.
+  //  The pointer is compared to 'cmp' argument and if they are
+  //  equal, its value is set to 'val_'. Old value of the pointer
+  //  is returned.
+  inline T *cas(T *cmp_, T *val_) ZMQ_NOEXCEPT {
 #if defined ZMQ_ATOMIC_PTR_CXX11
-        _ptr.compare_exchange_strong (cmp_, val_, std::memory_order_acq_rel);
-        return cmp_;
+    _ptr.compare_exchange_strong(cmp_, val_, std::memory_order_acq_rel);
+    return cmp_;
 #else
-        return (T *) atomic_cas ((void **) &_ptr, cmp_, val_
+    return (T *) atomic_cas ((void **) &_ptr, cmp_, val_
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-                                 ,
-                                 _sync
+                             ,
+                             _sync
 #endif
-        );
+    );
 #endif
-    }
+  }
 
-  private:
+ private:
 #if defined ZMQ_ATOMIC_PTR_CXX11
-    std::atomic<T *> _ptr;
+  std::atomic<T *> _ptr;
 #else
-    volatile T *_ptr;
+  volatile T *_ptr;
 #endif
 
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-    mutex_t _sync;
+  mutex_t _sync;
 #endif
 
 #if !defined ZMQ_ATOMIC_PTR_CXX11
-    atomic_ptr_t (const atomic_ptr_t &);
-    const atomic_ptr_t &operator= (const atomic_ptr_t &);
+  atomic_ptr_t (const atomic_ptr_t &);
+  const atomic_ptr_t &operator= (const atomic_ptr_t &);
 #endif
 };
 
-struct atomic_value_t
-{
-    atomic_value_t (const int value_) ZMQ_NOEXCEPT : _value (value_) {}
+struct atomic_value_t {
+  atomic_value_t(const int value_) ZMQ_NOEXCEPT : _value(value_) {}
 
-    atomic_value_t (const atomic_value_t &src_) ZMQ_NOEXCEPT
-        : _value (src_.load ())
-    {
-    }
+  atomic_value_t(const atomic_value_t &src_) ZMQ_NOEXCEPT
+      : _value(src_.load()) {
+  }
 
-    void store (const int value_) ZMQ_NOEXCEPT
-    {
+  void store(const int value_) ZMQ_NOEXCEPT {
 #if defined ZMQ_ATOMIC_PTR_CXX11
-        _value.store (value_, std::memory_order_release);
+    _value.store(value_, std::memory_order_release);
 #else
-        atomic_xchg_ptr ((void **) &_value, (void *) (ptrdiff_t) value_
+    atomic_xchg_ptr ((void **) &_value, (void *) (ptrdiff_t) value_
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-                         ,
-                         _sync
+                     ,
+                     _sync
 #endif
-        );
+    );
 #endif
-    }
+  }
 
-    int load () const ZMQ_NOEXCEPT
-    {
+  int load() const ZMQ_NOEXCEPT {
 #if defined ZMQ_ATOMIC_PTR_CXX11
-        return _value.load (std::memory_order_acquire);
+    return _value.load(std::memory_order_acquire);
 #else
-        return (int) (ptrdiff_t) atomic_cas ((void **) &_value, 0, 0
+    return (int) (ptrdiff_t) atomic_cas ((void **) &_value, 0, 0
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-                                             ,
+                                         ,
 #if defined __SUNPRO_CC
-                                             const_cast<mutex_t &> (_sync)
+                                         const_cast<mutex_t &> (_sync)
 #else
-                                             _sync
+                                         _sync
 #endif
 #endif
-        );
+    );
 #endif
-    }
+  }
 
-  private:
+ private:
 #if defined ZMQ_ATOMIC_PTR_CXX11
-    std::atomic<int> _value;
+  std::atomic<int> _value;
 #else
-    volatile ptrdiff_t _value;
+  volatile ptrdiff_t _value;
 #endif
 
 #if defined ZMQ_ATOMIC_PTR_MUTEX
-    mutable mutex_t _sync;
+  mutable mutex_t _sync;
 #endif
 
-  private:
-    atomic_value_t &operator= (const atomic_value_t &src_);
+ private:
+  atomic_value_t &operator=(const atomic_value_t &src_);
 };
 }
 

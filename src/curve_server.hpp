@@ -36,50 +36,48 @@
 #include "options.hpp"
 #include "zap_client.hpp"
 
-namespace zmq
-{
+namespace zmq {
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4250)
 #endif
 class curve_server_t : public zap_client_common_handshake_t,
-                       public curve_mechanism_base_t
-{
-  public:
-    curve_server_t (session_base_t *session_,
-                    const std::string &peer_address_,
-                    const options_t &options_);
-    virtual ~curve_server_t ();
+                       public curve_mechanism_base_t {
+ public:
+  curve_server_t(session_base_t *session_,
+                 const std::string &peer_address_,
+                 const options_t &options_);
+  virtual ~curve_server_t();
 
-    // mechanism implementation
-    virtual int next_handshake_command (msg_t *msg_);
-    virtual int process_handshake_command (msg_t *msg_);
-    virtual int encode (msg_t *msg_);
-    virtual int decode (msg_t *msg_);
+  // mechanism implementation
+  virtual int next_handshake_command(msg_t *msg_);
+  virtual int process_handshake_command(msg_t *msg_);
+  virtual int encode(msg_t *msg_);
+  virtual int decode(msg_t *msg_);
 
-  private:
-    //  Our secret key (s)
-    uint8_t _secret_key[crypto_box_SECRETKEYBYTES];
+ private:
+  //  Our secret key (s)
+  uint8_t _secret_key[crypto_box_SECRETKEYBYTES];
 
-    //  Our short-term public key (S')
-    uint8_t _cn_public[crypto_box_PUBLICKEYBYTES];
+  //  Our short-term public key (S')
+  uint8_t _cn_public[crypto_box_PUBLICKEYBYTES];
 
-    //  Our short-term secret key (s')
-    uint8_t _cn_secret[crypto_box_SECRETKEYBYTES];
+  //  Our short-term secret key (s')
+  uint8_t _cn_secret[crypto_box_SECRETKEYBYTES];
 
-    //  Client's short-term public key (C')
-    uint8_t _cn_client[crypto_box_PUBLICKEYBYTES];
+  //  Client's short-term public key (C')
+  uint8_t _cn_client[crypto_box_PUBLICKEYBYTES];
 
-    //  Key used to produce cookie
-    uint8_t _cookie_key[crypto_secretbox_KEYBYTES];
+  //  Key used to produce cookie
+  uint8_t _cookie_key[crypto_secretbox_KEYBYTES];
 
-    int process_hello (msg_t *msg_);
-    int produce_welcome (msg_t *msg_);
-    int process_initiate (msg_t *msg_);
-    int produce_ready (msg_t *msg_);
-    int produce_error (msg_t *msg_) const;
+  int process_hello(msg_t *msg_);
+  int produce_welcome(msg_t *msg_);
+  int process_initiate(msg_t *msg_);
+  int produce_ready(msg_t *msg_);
+  int produce_error(msg_t *msg_) const;
 
-    void send_zap_request (const uint8_t *key_);
+  void send_zap_request(const uint8_t *key_);
 };
 #ifdef _MSC_VER
 #pragma warning(pop)

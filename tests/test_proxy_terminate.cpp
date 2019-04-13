@@ -34,98 +34,96 @@
 // but there is no pull on the other side, previously the proxy blocks
 // in writing to the backend, preventing the proxy from terminating
 
-void server_task (void *ctx_)
-{
-    size_t len = MAX_SOCKET_STRING;
-    char my_endpoint[MAX_SOCKET_STRING];
-    // Frontend socket talks to main process
-    void *frontend = zmq_socket (ctx_, ZMQ_SUB);
-    assert (frontend);
-    int rc = zmq_setsockopt (frontend, ZMQ_SUBSCRIBE, "", 0);
-    assert (rc == 0);
-    rc = zmq_bind (frontend, "tcp://127.0.0.1:*");
-    assert (rc == 0);
-    rc = zmq_getsockopt (frontend, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
-    assert (rc == 0);
+void server_task(void *ctx_) {
+  size_t len = MAX_SOCKET_STRING;
+  char my_endpoint[MAX_SOCKET_STRING];
+  // Frontend socket talks to main process
+  void *frontend = zmq_socket(ctx_, ZMQ_SUB);
+  assert (frontend);
+  int rc = zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
+  assert (rc == 0);
+  rc = zmq_bind(frontend, "tcp://127.0.0.1:*");
+  assert (rc == 0);
+  rc = zmq_getsockopt(frontend, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
+  assert (rc == 0);
 
-    // Nice socket which is never read
-    void *backend = zmq_socket (ctx_, ZMQ_PUSH);
-    assert (backend);
-    rc = zmq_bind (backend, "tcp://127.0.0.1:*");
-    assert (rc == 0);
+  // Nice socket which is never read
+  void *backend = zmq_socket(ctx_, ZMQ_PUSH);
+  assert (backend);
+  rc = zmq_bind(backend, "tcp://127.0.0.1:*");
+  assert (rc == 0);
 
-    // Control socket receives terminate command from main over inproc
-    void *control = zmq_socket (ctx_, ZMQ_REQ);
-    assert (control);
-    rc = zmq_connect (control, "inproc://control");
-    assert (rc == 0);
-    rc = s_send (control, my_endpoint);
-    assert (rc > 0);
+  // Control socket receives terminate command from main over inproc
+  void *control = zmq_socket(ctx_, ZMQ_REQ);
+  assert (control);
+  rc = zmq_connect(control, "inproc://control");
+  assert (rc == 0);
+  rc = s_send(control, my_endpoint);
+  assert (rc > 0);
 
-    // Connect backend to frontend via a proxy
-    rc = zmq_proxy_steerable (frontend, backend, NULL, control);
-    assert (rc == 0);
+  // Connect backend to frontend via a proxy
+  rc = zmq_proxy_steerable(frontend, backend, NULL, control);
+  assert (rc == 0);
 
-    rc = zmq_close (frontend);
-    assert (rc == 0);
-    rc = zmq_close (backend);
-    assert (rc == 0);
-    rc = zmq_close (control);
-    assert (rc == 0);
+  rc = zmq_close(frontend);
+  assert (rc == 0);
+  rc = zmq_close(backend);
+  assert (rc == 0);
+  rc = zmq_close(control);
+  assert (rc == 0);
 }
 
 
 // The main thread simply starts a basic steerable proxy server, publishes some messages, and then
 // waits for the server to terminate.
 
-int main (void)
-{
-    setup_test_environment ();
+int main(void) {
+  setup_test_environment();
 
-    void *ctx = zmq_ctx_new ();
-    assert (ctx);
+  void *ctx = zmq_ctx_new();
+  assert (ctx);
 
-    void *thread = zmq_threadstart (&server_task, ctx);
+  void *thread = zmq_threadstart(&server_task, ctx);
 
-    // Control socket receives terminate command from main over inproc
-    void *control = zmq_socket (ctx, ZMQ_REP);
-    assert (control);
-    int rc = zmq_bind (control, "inproc://control");
-    assert (rc == 0);
-    char *my_endpoint = s_recv (control);
-    assert (my_endpoint);
+  // Control socket receives terminate command from main over inproc
+  void *control = zmq_socket(ctx, ZMQ_REP);
+  assert (control);
+  int rc = zmq_bind(control, "inproc://control");
+  assert (rc == 0);
+  char *my_endpoint = s_recv(control);
+  assert (my_endpoint);
 
-    msleep (500); // Run for 500 ms
+  msleep(500); // Run for 500 ms
 
-    // Start a secondary publisher which writes data to the SUB-PUSH server socket
-    void *publisher = zmq_socket (ctx, ZMQ_PUB);
-    assert (publisher);
-    rc = zmq_connect (publisher, my_endpoint);
-    assert (rc == 0);
+  // Start a secondary publisher which writes data to the SUB-PUSH server socket
+  void *publisher = zmq_socket(ctx, ZMQ_PUB);
+  assert (publisher);
+  rc = zmq_connect(publisher, my_endpoint);
+  assert (rc == 0);
 
-    msleep (SETTLE_TIME);
-    rc = zmq_send (publisher, "This is a test", 14, 0);
-    assert (rc == 14);
+  msleep(SETTLE_TIME);
+  rc = zmq_send(publisher, "This is a test", 14, 0);
+  assert (rc == 14);
 
-    msleep (50);
-    rc = zmq_send (publisher, "This is a test", 14, 0);
-    assert (rc == 14);
+  msleep(50);
+  rc = zmq_send(publisher, "This is a test", 14, 0);
+  assert (rc == 14);
 
-    msleep (50);
-    rc = zmq_send (publisher, "This is a test", 14, 0);
-    assert (rc == 14);
-    rc = zmq_send (control, "TERMINATE", 9, 0);
-    assert (rc == 9);
+  msleep(50);
+  rc = zmq_send(publisher, "This is a test", 14, 0);
+  assert (rc == 14);
+  rc = zmq_send(control, "TERMINATE", 9, 0);
+  assert (rc == 9);
 
-    rc = zmq_close (publisher);
-    assert (rc == 0);
-    rc = zmq_close (control);
-    assert (rc == 0);
-    free (my_endpoint);
+  rc = zmq_close(publisher);
+  assert (rc == 0);
+  rc = zmq_close(control);
+  assert (rc == 0);
+  free(my_endpoint);
 
-    zmq_threadclose (thread);
+  zmq_threadclose(thread);
 
-    rc = zmq_ctx_term (ctx);
-    assert (rc == 0);
-    return 0;
+  rc = zmq_ctx_term(ctx);
+  assert (rc == 0);
+  return 0;
 }

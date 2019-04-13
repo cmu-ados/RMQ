@@ -42,8 +42,7 @@
 #include "metadata.hpp"
 #include "msg.hpp"
 
-namespace zmq
-{
+namespace zmq {
 
 class io_thread_t;
 class session_base_t;
@@ -52,89 +51,87 @@ class mechanism_t;
 //  This engine handles any socket with SOCK_STREAM semantics,
 //  e.g. TCP socket or an UNIX domain socket.
 
-class rdma_engine_t : public io_object_t, public i_engine
-{
+class rdma_engine_t : public io_object_t, public i_engine {
  public:
-  enum error_reason_t
-  {
+  enum error_reason_t {
     protocol_error,
     connection_error,
     timeout_error
   };
 
-  rdma_engine_t (fd_t fd_,
-                   const options_t &options_,
-                   const std::string &endpoint_);
-  ~rdma_engine_t ();
+  rdma_engine_t(fd_t fd_,
+                const options_t &options_,
+                const std::string &endpoint_);
+  ~rdma_engine_t();
 
   //  i_engine interface implementation.
-  void plug (zmq::io_thread_t *io_thread_, zmq::session_base_t *session_);
-  void terminate ();
-  bool restart_input ();
-  void restart_output ();
-  void zap_msg_available ();
-  const char *get_endpoint () const;
+  void plug(zmq::io_thread_t *io_thread_, zmq::session_base_t *session_);
+  void terminate();
+  bool restart_input();
+  void restart_output();
+  void zap_msg_available();
+  const char *get_endpoint() const;
 
   //  i_poll_events interface implementation.
-  void in_event ();
-  void out_event ();
-  void timer_event (int id_);
+  void in_event();
+  void out_event();
+  void timer_event(int id_);
 
  private:
   //  Unplug the engine from the session.
-  void unplug ();
+  void unplug();
 
   //  Function to handle network disconnections.
-  void error (error_reason_t reason_);
+  void error(error_reason_t reason_);
 
   //  Detects the protocol used by the peer.
-  bool handshake ();
+  bool handshake();
 
   //  Receive the greeting from the peer.
-  int receive_greeting ();
-  void receive_greeting_versioned ();
+  int receive_greeting();
+  void receive_greeting_versioned();
 
-  typedef bool (rdma_engine_t::*handshake_fun_t) ();
-  static handshake_fun_t select_handshake_fun (bool unversioned,
-                                               unsigned char revision);
+  typedef bool (rdma_engine_t::*handshake_fun_t)();
+  static handshake_fun_t select_handshake_fun(bool unversioned,
+                                              unsigned char revision);
 
-  bool handshake_v1_0_unversioned ();
-  bool handshake_v1_0 ();
-  bool handshake_v2_0 ();
-  bool handshake_v3_0 ();
+  bool handshake_v1_0_unversioned();
+  bool handshake_v1_0();
+  bool handshake_v2_0();
+  bool handshake_v3_0();
 
-  int routing_id_msg (msg_t *msg_);
-  int process_routing_id_msg (msg_t *msg_);
+  int routing_id_msg(msg_t *msg_);
+  int process_routing_id_msg(msg_t *msg_);
 
-  int next_handshake_command (msg_t *msg_);
-  int process_handshake_command (msg_t *msg_);
+  int next_handshake_command(msg_t *msg_);
+  int process_handshake_command(msg_t *msg_);
 
-  int pull_msg_from_session (msg_t *msg_);
-  int push_msg_to_session (msg_t *msg_);
+  int pull_msg_from_session(msg_t *msg_);
+  int push_msg_to_session(msg_t *msg_);
 
-  int push_raw_msg_to_session (msg_t *msg_);
+  int push_raw_msg_to_session(msg_t *msg_);
 
-  int write_credential (msg_t *msg_);
-  int pull_and_encode (msg_t *msg_);
-  int decode_and_push (msg_t *msg_);
-  int push_one_then_decode_and_push (msg_t *msg_);
+  int write_credential(msg_t *msg_);
+  int pull_and_encode(msg_t *msg_);
+  int decode_and_push(msg_t *msg_);
+  int push_one_then_decode_and_push(msg_t *msg_);
 
-  void mechanism_ready ();
+  void mechanism_ready();
 
-  size_t add_property (unsigned char *ptr_,
-                       const char *name_,
-                       const void *value_,
-                       size_t value_len_);
+  size_t add_property(unsigned char *ptr_,
+                      const char *name_,
+                      const void *value_,
+                      size_t value_len_);
 
-  void set_handshake_timer ();
+  void set_handshake_timer();
 
   typedef metadata_t::dict_t properties_t;
-  bool init_properties (properties_t &properties_);
+  bool init_properties(properties_t &properties_);
 
-  int process_command_message (msg_t *msg_);
-  int produce_ping_message (msg_t *msg_);
-  int process_heartbeat_message (msg_t *msg_);
-  int produce_pong_message (msg_t *msg_);
+  int process_command_message(msg_t *msg_);
+  int produce_ping_message(msg_t *msg_);
+  int process_heartbeat_message(msg_t *msg_);
+  int produce_pong_message(msg_t *msg_);
 
   //  Underlying socket.
   fd_t _s;
@@ -189,9 +186,9 @@ class rdma_engine_t : public io_object_t, public i_engine
 
   bool _plugged;
 
-  int (rdma_engine_t::*_next_msg) (msg_t *msg_);
+  int (rdma_engine_t::*_next_msg)(msg_t *msg_);
 
-  int (rdma_engine_t::*_process_msg) (msg_t *msg_);
+  int (rdma_engine_t::*_process_msg)(msg_t *msg_);
 
   bool _io_error;
 
@@ -209,8 +206,7 @@ class rdma_engine_t : public io_object_t, public i_engine
   bool _output_stopped;
 
   //  ID of the handshake timer
-  enum
-  {
+  enum {
     handshake_timer_id = 0x40
   };
 
@@ -218,8 +214,7 @@ class rdma_engine_t : public io_object_t, public i_engine
   bool _has_handshake_timer;
 
   //  Heartbeat stuff
-  enum
-  {
+  enum {
     heartbeat_ivl_timer_id = 0x80,
     heartbeat_timeout_timer_id = 0x81,
     heartbeat_ttl_timer_id = 0x82
@@ -234,8 +229,8 @@ class rdma_engine_t : public io_object_t, public i_engine
 
   std::string _peer_address;
 
-  rdma_engine_t (const rdma_engine_t &);
-  const rdma_engine_t &operator= (const rdma_engine_t &);
+  rdma_engine_t(const rdma_engine_t &);
+  const rdma_engine_t &operator=(const rdma_engine_t &);
 };
 }
 

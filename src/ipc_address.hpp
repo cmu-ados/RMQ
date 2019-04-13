@@ -38,29 +38,27 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-namespace zmq
-{
-class ipc_address_t
-{
-  public:
-    ipc_address_t ();
-    ipc_address_t (const sockaddr *sa_, socklen_t sa_len_);
-    ~ipc_address_t ();
+namespace zmq {
+class ipc_address_t {
+ public:
+  ipc_address_t();
+  ipc_address_t(const sockaddr *sa_, socklen_t sa_len_);
+  ~ipc_address_t();
 
-    //  This function sets up the address for UNIX domain transport.
-    int resolve (const char *path_);
+  //  This function sets up the address for UNIX domain transport.
+  int resolve(const char *path_);
 
-    //  The opposite to resolve()
-    int to_string (std::string &addr_) const;
+  //  The opposite to resolve()
+  int to_string(std::string &addr_) const;
 
-    const sockaddr *addr () const;
-    socklen_t addrlen () const;
+  const sockaddr *addr() const;
+  socklen_t addrlen() const;
 
-  private:
-    struct sockaddr_un address;
+ private:
+  struct sockaddr_un address;
 
-    ipc_address_t (const ipc_address_t &);
-    const ipc_address_t &operator= (const ipc_address_t &);
+  ipc_address_t(const ipc_address_t &);
+  const ipc_address_t &operator=(const ipc_address_t &);
 };
 }
 

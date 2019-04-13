@@ -32,91 +32,83 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_reconnect_ivl_against_pair_socket (const char *my_endpoint_,
-                                             void *sb_)
-{
-    void *sc = test_context_socket (ZMQ_PAIR);
-    int interval = -1;
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (sc, ZMQ_RECONNECT_IVL, &interval, sizeof (int)));
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, my_endpoint_));
+void test_reconnect_ivl_against_pair_socket(const char *my_endpoint_,
+                                            void *sb_) {
+  void *sc = test_context_socket(ZMQ_PAIR);
+  int interval = -1;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(sc, ZMQ_RECONNECT_IVL, &interval, sizeof(int)));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, my_endpoint_));
 
-    bounce (sb_, sc);
+  bounce(sb_, sc);
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_unbind (sb_, my_endpoint_));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_unbind(sb_, my_endpoint_));
 
-    expect_bounce_fail (sb_, sc);
+  expect_bounce_fail(sb_, sc);
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb_, my_endpoint_));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb_, my_endpoint_));
 
-    expect_bounce_fail (sb_, sc);
+  expect_bounce_fail(sb_, sc);
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, my_endpoint_));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, my_endpoint_));
 
-    bounce (sb_, sc);
+  bounce(sb_, sc);
 
-    test_context_socket_close (sc);
+  test_context_socket_close(sc);
 }
 
 #if !defined(ZMQ_HAVE_WINDOWS) && !defined(ZMQ_HAVE_GNU)
-void test_reconnect_ivl_ipc (void)
-{
-    const char *ipc_endpoint = "ipc:///tmp/test_reconnect_ivl";
-    void *sb = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, ipc_endpoint));
+void test_reconnect_ivl_ipc(void) {
+  const char *ipc_endpoint = "ipc:///tmp/test_reconnect_ivl";
+  void *sb = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, ipc_endpoint));
 
-    test_reconnect_ivl_against_pair_socket (ipc_endpoint, sb);
-    test_context_socket_close (sb);
+  test_reconnect_ivl_against_pair_socket(ipc_endpoint, sb);
+  test_context_socket_close(sb);
 }
 #endif
 
-void test_reconnect_ivl_tcp (const char *address_)
-{
-    size_t len = MAX_SOCKET_STRING;
-    char my_endpoint[MAX_SOCKET_STRING];
+void test_reconnect_ivl_tcp(const char *address_) {
+  size_t len = MAX_SOCKET_STRING;
+  char my_endpoint[MAX_SOCKET_STRING];
 
-    void *sb = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, address_));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_getsockopt (sb, ZMQ_LAST_ENDPOINT, my_endpoint, &len));
+  void *sb = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, address_));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_getsockopt(sb, ZMQ_LAST_ENDPOINT, my_endpoint, &len));
 
-    test_reconnect_ivl_against_pair_socket (my_endpoint, sb);
-    test_context_socket_close (sb);
+  test_reconnect_ivl_against_pair_socket(my_endpoint, sb);
+  test_context_socket_close(sb);
 }
 
-void test_reconnect_ivl_tcp_ipv4 ()
-{
-    test_reconnect_ivl_tcp ("tcp://127.0.0.1:*");
+void test_reconnect_ivl_tcp_ipv4() {
+  test_reconnect_ivl_tcp("tcp://127.0.0.1:*");
 }
 
-void test_reconnect_ivl_tcp_ipv6 ()
-{
-    if (is_ipv6_available ()) {
-        zmq_ctx_set (get_test_context (), ZMQ_IPV6, 1);
-        test_reconnect_ivl_tcp ("tcp://[::1]:*");
-    }
+void test_reconnect_ivl_tcp_ipv6() {
+  if (is_ipv6_available()) {
+    zmq_ctx_set(get_test_context(), ZMQ_IPV6, 1);
+    test_reconnect_ivl_tcp("tcp://[::1]:*");
+  }
 }
 
-int main (void)
-{
-    setup_test_environment ();
+int main(void) {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
+  UNITY_BEGIN ();
 #if !defined(ZMQ_HAVE_WINDOWS) && !defined(ZMQ_HAVE_GNU)
-    RUN_TEST (test_reconnect_ivl_ipc);
+  RUN_TEST (test_reconnect_ivl_ipc);
 #endif
-    RUN_TEST (test_reconnect_ivl_tcp_ipv4);
-    RUN_TEST (test_reconnect_ivl_tcp_ipv6);
+  RUN_TEST (test_reconnect_ivl_tcp_ipv4);
+  RUN_TEST (test_reconnect_ivl_tcp_ipv6);
 
-    return UNITY_END ();
+  return UNITY_END ();
 }

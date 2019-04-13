@@ -36,8 +36,7 @@
 #include "atomic_counter.hpp"
 #include "ctx.hpp"
 
-namespace zmq
-{
+namespace zmq {
 struct i_poll_events;
 
 // A build of libzmq must provide an implementation of the poller_t concept. By
@@ -119,77 +118,74 @@ struct i_poll_events;
 //
 // For documentation of the public methods, see the description of the poller_t
 // concept.
-class poller_base_t
-{
-  public:
-    poller_base_t ();
-    virtual ~poller_base_t ();
+class poller_base_t {
+ public:
+  poller_base_t();
+  virtual ~poller_base_t();
 
-    // Methods from the poller concept.
-    int get_load () const;
-    void add_timer (int timeout_, zmq::i_poll_events *sink_, int id_);
-    void cancel_timer (zmq::i_poll_events *sink_, int id_);
+  // Methods from the poller concept.
+  int get_load() const;
+  void add_timer(int timeout_, zmq::i_poll_events *sink_, int id_);
+  void cancel_timer(zmq::i_poll_events *sink_, int id_);
 
-  protected:
-    //  Called by individual poller implementations to manage the load.
-    void adjust_load (int amount_);
+ protected:
+  //  Called by individual poller implementations to manage the load.
+  void adjust_load(int amount_);
 
-    //  Executes any timers that are due. Returns number of milliseconds
-    //  to wait to match the next timer or 0 meaning "no timers".
-    uint64_t execute_timers ();
+  //  Executes any timers that are due. Returns number of milliseconds
+  //  to wait to match the next timer or 0 meaning "no timers".
+  uint64_t execute_timers();
 
-  private:
-    //  Clock instance private to this I/O thread.
-    clock_t _clock;
+ private:
+  //  Clock instance private to this I/O thread.
+  clock_t _clock;
 
-    //  List of active timers.
-    struct timer_info_t
-    {
-        zmq::i_poll_events *sink;
-        int id;
-    };
-    typedef std::multimap<uint64_t, timer_info_t> timers_t;
-    timers_t _timers;
+  //  List of active timers.
+  struct timer_info_t {
+    zmq::i_poll_events *sink;
+    int id;
+  };
+  typedef std::multimap<uint64_t, timer_info_t> timers_t;
+  timers_t _timers;
 
-    //  Load of the poller. Currently the number of file descriptors
-    //  registered.
-    atomic_counter_t _load;
+  //  Load of the poller. Currently the number of file descriptors
+  //  registered.
+  atomic_counter_t _load;
 
-    poller_base_t (const poller_base_t &);
-    const poller_base_t &operator= (const poller_base_t &);
+  poller_base_t(const poller_base_t &);
+  const poller_base_t &operator=(const poller_base_t &);
 };
 
 //  Base class for a poller with a single worker thread.
-class worker_poller_base_t : public poller_base_t
-{
-  public:
-    worker_poller_base_t (const thread_ctx_t &ctx_);
+class worker_poller_base_t : public poller_base_t {
+ public:
+  worker_poller_base_t(const thread_ctx_t &ctx_);
 
-    // Methods from the poller concept.
-    void start ();
+  // Methods from the poller concept.
+  void start();
 
-  protected:
-    //  Checks whether the currently executing thread is the worker thread
-    //  via an assertion.
-    //  Should be called by the add_fd, removed_fd, set_*, reset_* functions
-    //  to ensure correct usage.
-    void check_thread ();
+ protected:
+  //  Checks whether the currently executing thread is the worker thread
+  //  via an assertion.
+  //  Should be called by the add_fd, removed_fd, set_*, reset_* functions
+  //  to ensure correct usage.
+  void check_thread();
 
-    //  Stops the worker thread. Should be called from the destructor of the
-    //  leaf class.
-    void stop_worker ();
+  //  Stops the worker thread. Should be called from the destructor of the
+  //  leaf class.
+  void stop_worker();
 
-  private:
-    //  Main worker thread routine.
-    static void worker_routine (void *arg_);
+ private:
+  //  Main worker thread routine.
+  static void worker_routine(void *arg_);
 
-    virtual void loop () = 0;
+  virtual void loop() = 0;
 
-    // Reference to ZMQ context.
-    const thread_ctx_t &_ctx;
+  // Reference to ZMQ context.
+  const thread_ctx_t &_ctx;
 
-    //  Handle of the physical thread doing the I/O work.
-    thread_t _worker;
+  //  Handle of the physical thread doing the I/O work.
+  thread_t _worker;
 };
 }
 

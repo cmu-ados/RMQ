@@ -39,34 +39,31 @@
 
 #include "ip_resolver.hpp"
 
-namespace zmq
-{
-class udp_address_t
-{
-  public:
-    udp_address_t ();
-    virtual ~udp_address_t ();
+namespace zmq {
+class udp_address_t {
+ public:
+  udp_address_t();
+  virtual ~udp_address_t();
 
-    int resolve (const char *name_, bool receiver_, bool ipv6_);
+  int resolve(const char *name_, bool receiver_, bool ipv6_);
 
-    //  The opposite to resolve()
-    virtual int to_string (std::string &addr_);
+  //  The opposite to resolve()
+  virtual int to_string(std::string &addr_);
 
+  int family() const;
 
-    int family () const;
+  bool is_mcast() const;
 
-    bool is_mcast () const;
+  const ip_addr_t *bind_addr() const;
+  int bind_if() const;
+  const ip_addr_t *target_addr() const;
 
-    const ip_addr_t *bind_addr () const;
-    int bind_if () const;
-    const ip_addr_t *target_addr () const;
-
-  private:
-    ip_addr_t _bind_address;
-    int _bind_interface;
-    ip_addr_t _target_address;
-    bool _is_multicast;
-    std::string _address;
+ private:
+  ip_addr_t _bind_address;
+  int _bind_interface;
+  ip_addr_t _target_address;
+  bool _is_multicast;
+  std::string _address;
 };
 }
 

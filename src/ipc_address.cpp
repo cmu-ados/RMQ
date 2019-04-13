@@ -38,71 +38,64 @@
 #include <string>
 #include <sstream>
 
-zmq::ipc_address_t::ipc_address_t ()
-{
-    memset (&address, 0, sizeof address);
+zmq::ipc_address_t::ipc_address_t() {
+  memset(&address, 0, sizeof address);
 }
 
-zmq::ipc_address_t::ipc_address_t (const sockaddr *sa_, socklen_t sa_len_)
-{
-    zmq_assert (sa_ && sa_len_ > 0);
+zmq::ipc_address_t::ipc_address_t(const sockaddr *sa_, socklen_t sa_len_) {
+  zmq_assert (sa_ && sa_len_ > 0);
 
-    memset (&address, 0, sizeof address);
-    if (sa_->sa_family == AF_UNIX)
-        memcpy (&address, sa_, sa_len_);
+  memset(&address, 0, sizeof address);
+  if (sa_->sa_family == AF_UNIX)
+    memcpy(&address, sa_, sa_len_);
 }
 
-zmq::ipc_address_t::~ipc_address_t ()
-{
+zmq::ipc_address_t::~ipc_address_t() {
 }
 
-int zmq::ipc_address_t::resolve (const char *path_)
-{
-    if (strlen (path_) >= sizeof address.sun_path) {
-        errno = ENAMETOOLONG;
-        return -1;
-    }
-    if (path_[0] == '@' && !path_[1]) {
-        errno = EINVAL;
-        return -1;
-    }
+int zmq::ipc_address_t::resolve(const char *path_) {
+  if (strlen(path_) >= sizeof address.sun_path) {
+    errno = ENAMETOOLONG;
+    return -1;
+  }
+  if (path_[0] == '@' && !path_[1]) {
+    errno = EINVAL;
+    return -1;
+  }
 
-    address.sun_family = AF_UNIX;
-    strcpy (address.sun_path, path_);
-    /* Abstract sockets start with '\0' */
-    if (path_[0] == '@')
-        *address.sun_path = '\0';
-    return 0;
+  address.sun_family = AF_UNIX;
+  strcpy(address.sun_path, path_);
+  /* Abstract sockets start with '\0' */
+  if (path_[0] == '@')
+    *address.sun_path = '\0';
+  return 0;
 }
 
-int zmq::ipc_address_t::to_string (std::string &addr_) const
-{
-    if (address.sun_family != AF_UNIX) {
-        addr_.clear ();
-        return -1;
-    }
+int zmq::ipc_address_t::to_string(std::string &addr_) const {
+  if (address.sun_family != AF_UNIX) {
+    addr_.clear();
+    return -1;
+  }
 
-    std::stringstream s;
-    s << "ipc://";
-    if (!address.sun_path[0] && address.sun_path[1])
-        s << "@" << address.sun_path + 1;
-    else
-        s << address.sun_path;
-    addr_ = s.str ();
-    return 0;
+  std::stringstream s;
+  s << "ipc://";
+  if (!address.sun_path[0] && address.sun_path[1])
+    s << "@" << address.sun_path + 1;
+  else
+    s << address.sun_path;
+  addr_ = s.str();
+  return 0;
 }
 
-const sockaddr *zmq::ipc_address_t::addr () const
-{
-    return reinterpret_cast<const sockaddr *> (&address);
+const sockaddr *zmq::ipc_address_t::addr() const {
+  return reinterpret_cast<const sockaddr *> (&address);
 }
 
-socklen_t zmq::ipc_address_t::addrlen () const
-{
-    if (!address.sun_path[0] && address.sun_path[1])
-        return static_cast<socklen_t> (strlen (address.sun_path + 1))
-               + sizeof (sa_family_t) + 1;
-    return static_cast<socklen_t> (sizeof address);
+socklen_t zmq::ipc_address_t::addrlen() const {
+  if (!address.sun_path[0] && address.sun_path[1])
+    return static_cast<socklen_t> (strlen(address.sun_path + 1))
+        + sizeof(sa_family_t) + 1;
+  return static_cast<socklen_t> (sizeof address);
 }
 
 #endif

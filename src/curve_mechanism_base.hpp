@@ -39,38 +39,36 @@
 #endif
 
 #if crypto_box_NONCEBYTES != 24 || crypto_box_PUBLICKEYBYTES != 32             \
-  || crypto_box_SECRETKEYBYTES != 32 || crypto_box_ZEROBYTES != 32             \
-  || crypto_box_BOXZEROBYTES != 16 || crypto_secretbox_NONCEBYTES != 24        \
-  || crypto_secretbox_ZEROBYTES != 32 || crypto_secretbox_BOXZEROBYTES != 16
+ || crypto_box_SECRETKEYBYTES != 32 || crypto_box_ZEROBYTES != 32             \
+ || crypto_box_BOXZEROBYTES != 16 || crypto_secretbox_NONCEBYTES != 24        \
+ || crypto_secretbox_ZEROBYTES != 32 || crypto_secretbox_BOXZEROBYTES != 16
 #error "CURVE library not built properly"
 #endif
 
 #include "mechanism_base.hpp"
 #include "options.hpp"
 
-namespace zmq
-{
-class curve_mechanism_base_t : public virtual mechanism_base_t
-{
-  public:
-    curve_mechanism_base_t (session_base_t *session_,
-                            const options_t &options_,
-                            const char *encode_nonce_prefix_,
-                            const char *decode_nonce_prefix_);
+namespace zmq {
+class curve_mechanism_base_t : public virtual mechanism_base_t {
+ public:
+  curve_mechanism_base_t(session_base_t *session_,
+                         const options_t &options_,
+                         const char *encode_nonce_prefix_,
+                         const char *decode_nonce_prefix_);
 
-    // mechanism implementation
-    virtual int encode (msg_t *msg_);
-    virtual int decode (msg_t *msg_);
+  // mechanism implementation
+  virtual int encode(msg_t *msg_);
+  virtual int decode(msg_t *msg_);
 
-  protected:
-    const char *encode_nonce_prefix;
-    const char *decode_nonce_prefix;
+ protected:
+  const char *encode_nonce_prefix;
+  const char *decode_nonce_prefix;
 
-    uint64_t cn_nonce;
-    uint64_t cn_peer_nonce;
+  uint64_t cn_nonce;
+  uint64_t cn_peer_nonce;
 
-    //  Intermediary buffer used to speed up boxing and unboxing.
-    uint8_t cn_precom[crypto_box_BEFORENMBYTES];
+  //  Intermediary buffer used to speed up boxing and unboxing.
+  uint8_t cn_precom[crypto_box_BEFORENMBYTES];
 };
 }
 

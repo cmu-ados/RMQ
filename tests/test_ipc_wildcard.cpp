@@ -32,40 +32,36 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_ipc_wildcard ()
-{
-    void *sb = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, "ipc://*"));
+void test_ipc_wildcard() {
+  void *sb = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, "ipc://*"));
 
-    char endpoint[200];
-    size_t size = sizeof (endpoint);
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_getsockopt (sb, ZMQ_LAST_ENDPOINT, endpoint, &size));
+  char endpoint[200];
+  size_t size = sizeof(endpoint);
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_getsockopt(sb, ZMQ_LAST_ENDPOINT, endpoint, &size));
 
-    void *sc = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, endpoint));
+  void *sc = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, endpoint));
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    test_context_socket_close (sc);
-    test_context_socket_close (sb);
+  test_context_socket_close(sc);
+  test_context_socket_close(sb);
 }
 
-int main ()
-{
-    setup_test_environment ();
+int main() {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_ipc_wildcard);
-    return UNITY_END ();
+  UNITY_BEGIN ();
+  RUN_TEST (test_ipc_wildcard);
+  return UNITY_END ();
 }

@@ -30,47 +30,46 @@
 #include <stdio.h>
 #include "testutil.hpp"
 
-int main (void)
-{
-    if (!is_tipc_available ()) {
-        printf ("TIPC environment unavailable, skipping test\n");
-        return 77;
-    }
+int main(void) {
+  if (!is_tipc_available()) {
+    printf("TIPC environment unavailable, skipping test\n");
+    return 77;
+  }
 
-    fprintf (stderr, "test_router_mandatory_tipc running...\n");
+  fprintf(stderr, "test_router_mandatory_tipc running...\n");
 
-    void *ctx = zmq_init (1);
-    assert (ctx);
+  void *ctx = zmq_init(1);
+  assert (ctx);
 
-    // Creating the first socket.
-    void *sa = zmq_socket (ctx, ZMQ_ROUTER);
-    assert (sa);
+  // Creating the first socket.
+  void *sa = zmq_socket(ctx, ZMQ_ROUTER);
+  assert (sa);
 
-    int rc = zmq_bind (sa, "tipc://{15560,0,0}");
-    assert (rc == 0);
+  int rc = zmq_bind(sa, "tipc://{15560,0,0}");
+  assert (rc == 0);
 
-    // Sending a message to an unknown peer with the default setting
-    rc = zmq_send (sa, "UNKNOWN", 7, ZMQ_SNDMORE);
-    assert (rc == 7);
-    rc = zmq_send (sa, "DATA", 4, 0);
-    assert (rc == 4);
+  // Sending a message to an unknown peer with the default setting
+  rc = zmq_send(sa, "UNKNOWN", 7, ZMQ_SNDMORE);
+  assert (rc == 7);
+  rc = zmq_send(sa, "DATA", 4, 0);
+  assert (rc == 4);
 
-    int mandatory = 1;
+  int mandatory = 1;
 
-    // Set mandatory routing on socket
-    rc =
-      zmq_setsockopt (sa, ZMQ_ROUTER_MANDATORY, &mandatory, sizeof (mandatory));
-    assert (rc == 0);
+  // Set mandatory routing on socket
+  rc =
+      zmq_setsockopt(sa, ZMQ_ROUTER_MANDATORY, &mandatory, sizeof(mandatory));
+  assert (rc == 0);
 
-    // Send a message and check that it fails
-    rc = zmq_send (sa, "UNKNOWN", 7, ZMQ_SNDMORE | ZMQ_DONTWAIT);
-    assert (rc == -1 && errno == EHOSTUNREACH);
+  // Send a message and check that it fails
+  rc = zmq_send(sa, "UNKNOWN", 7, ZMQ_SNDMORE | ZMQ_DONTWAIT);
+  assert (rc == -1 && errno == EHOSTUNREACH);
 
-    rc = zmq_close (sa);
-    assert (rc == 0);
+  rc = zmq_close(sa);
+  assert (rc == 0);
 
-    rc = zmq_ctx_term (ctx);
-    assert (rc == 0);
+  rc = zmq_ctx_term(ctx);
+  assert (rc == 0);
 
-    return 0;
+  return 0;
 }

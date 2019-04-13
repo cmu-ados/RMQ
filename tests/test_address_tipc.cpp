@@ -30,121 +30,113 @@
 #include "testutil.hpp"
 #include <unity.h>
 
-
-void setUp ()
-{
+void setUp() {
 }
-void tearDown ()
-{
+void tearDown() {
 }
 
-void test_tipc_port_name_and_domain ()
-{
-    void *ctx = zmq_ctx_new ();
-    TEST_ASSERT_NOT_NULL (ctx);
+void test_tipc_port_name_and_domain() {
+  void *ctx = zmq_ctx_new();
+  TEST_ASSERT_NOT_NULL(ctx);
 
-    // test Port Name addressing
-    void *sb = zmq_socket (ctx, ZMQ_REP);
-    TEST_ASSERT_NOT_NULL (sb);
-    int rc = zmq_bind (sb, "tipc://{5560,0,0}");
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  // test Port Name addressing
+  void *sb = zmq_socket(ctx, ZMQ_REP);
+  TEST_ASSERT_NOT_NULL(sb);
+  int rc = zmq_bind(sb, "tipc://{5560,0,0}");
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    void *sc = zmq_socket (ctx, ZMQ_REQ);
-    TEST_ASSERT_NOT_NULL (sc);
-    rc = zmq_connect (sc, "tipc://{5560,0}@0.0.0");
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  void *sc = zmq_socket(ctx, ZMQ_REQ);
+  TEST_ASSERT_NOT_NULL(sc);
+  rc = zmq_connect(sc, "tipc://{5560,0}@0.0.0");
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    rc = zmq_close (sc);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  rc = zmq_close(sc);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    rc = zmq_close (sb);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  rc = zmq_close(sb);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    zmq_ctx_term (ctx);
+  zmq_ctx_term(ctx);
 }
 
-void test_tipc_port_identity ()
-{
-    char endpoint[256];
-    size_t size = 256;
-    unsigned int z, c, n, ref;
+void test_tipc_port_identity() {
+  char endpoint[256];
+  size_t size = 256;
+  unsigned int z, c, n, ref;
 
-    void *ctx = zmq_ctx_new ();
-    TEST_ASSERT_NOT_NULL (ctx);
+  void *ctx = zmq_ctx_new();
+  TEST_ASSERT_NOT_NULL(ctx);
 
-    void *sb = zmq_socket (ctx, ZMQ_REP);
-    TEST_ASSERT_NOT_NULL (sb);
+  void *sb = zmq_socket(ctx, ZMQ_REP);
+  TEST_ASSERT_NOT_NULL(sb);
 
-    void *sc = zmq_socket (ctx, ZMQ_REQ);
-    TEST_ASSERT_NOT_NULL (sc);
+  void *sc = zmq_socket(ctx, ZMQ_REQ);
+  TEST_ASSERT_NOT_NULL(sc);
 
-    // Test binding to random Port Identity
-    int rc = zmq_bind (sb, "tipc://<*>");
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  // Test binding to random Port Identity
+  int rc = zmq_bind(sb, "tipc://<*>");
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    // Test resolving assigned address, should return a properly formatted string
-    rc = zmq_getsockopt (sb, ZMQ_LAST_ENDPOINT, &endpoint[0], &size);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  // Test resolving assigned address, should return a properly formatted string
+  rc = zmq_getsockopt(sb, ZMQ_LAST_ENDPOINT, &endpoint[0], &size);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    rc = sscanf (&endpoint[0], "tipc://<%u.%u.%u:%u>", &z, &c, &n, &ref);
-    TEST_ASSERT_EQUAL_INT (4, rc);
+  rc = sscanf(&endpoint[0], "tipc://<%u.%u.%u:%u>", &z, &c, &n, &ref);
+  TEST_ASSERT_EQUAL_INT(4, rc);
 
-    rc = zmq_connect (sc, endpoint);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  rc = zmq_connect(sc, endpoint);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    rc = zmq_close (sc);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  rc = zmq_close(sc);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    rc = zmq_close (sb);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  rc = zmq_close(sb);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    zmq_ctx_term (ctx);
+  zmq_ctx_term(ctx);
 }
 
-void test_tipc_bad_addresses ()
-{
-    void *ctx = zmq_ctx_new ();
-    TEST_ASSERT_NOT_NULL (ctx);
+void test_tipc_bad_addresses() {
+  void *ctx = zmq_ctx_new();
+  TEST_ASSERT_NOT_NULL(ctx);
 
-    // Test Port Name addressing
-    void *sb = zmq_socket (ctx, ZMQ_REP);
-    TEST_ASSERT_NOT_NULL (sb);
+  // Test Port Name addressing
+  void *sb = zmq_socket(ctx, ZMQ_REP);
+  TEST_ASSERT_NOT_NULL(sb);
 
-    // Test binding to a fixed address, should fail
-    int rc = zmq_bind (sb, "tipc://<1.2.3:123123>");
-    TEST_ASSERT_EQUAL_INT (-1, rc);
-    TEST_ASSERT_EQUAL_INT (EINVAL, errno);
+  // Test binding to a fixed address, should fail
+  int rc = zmq_bind(sb, "tipc://<1.2.3:123123>");
+  TEST_ASSERT_EQUAL_INT(-1, rc);
+  TEST_ASSERT_EQUAL_INT(EINVAL, errno);
 
-    // Test connecting to random identity, should fail
-    rc = zmq_connect (sb, "tipc://<*>");
-    TEST_ASSERT_EQUAL_INT (-1, rc);
-    TEST_ASSERT_EQUAL_INT (EINVAL, errno);
+  // Test connecting to random identity, should fail
+  rc = zmq_connect(sb, "tipc://<*>");
+  TEST_ASSERT_EQUAL_INT(-1, rc);
+  TEST_ASSERT_EQUAL_INT(EINVAL, errno);
 
-    // Clean up
-    rc = zmq_close (sb);
-    TEST_ASSERT_EQUAL_INT (0, rc);
+  // Clean up
+  rc = zmq_close(sb);
+  TEST_ASSERT_EQUAL_INT(0, rc);
 
-    zmq_ctx_term (ctx);
+  zmq_ctx_term(ctx);
 }
 
+int main() {
+  setup_test_environment();
 
-int main ()
-{
-    setup_test_environment ();
+  if (!is_tipc_available()) {
+    printf("TIPC environment unavailable, skipping test\n");
+    return 77;
+  }
 
-    if (!is_tipc_available ()) {
-        printf ("TIPC environment unavailable, skipping test\n");
-        return 77;
-    }
+  UNITY_BEGIN();
+  RUN_TEST(test_tipc_port_name_and_domain);
+  RUN_TEST(test_tipc_port_identity);
+  RUN_TEST(test_tipc_bad_addresses);
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_tipc_port_name_and_domain);
-    RUN_TEST (test_tipc_port_identity);
-    RUN_TEST (test_tipc_bad_addresses);
-
-    return UNITY_END ();
+  return UNITY_END();
 }

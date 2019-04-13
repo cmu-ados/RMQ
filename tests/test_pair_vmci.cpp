@@ -33,36 +33,35 @@
 
 #include "testutil.hpp"
 
-int main (void)
-{
-    setup_test_environment ();
-    void *ctx = zmq_ctx_new ();
-    assert (ctx);
+int main(void) {
+  setup_test_environment();
+  void *ctx = zmq_ctx_new();
+  assert (ctx);
 
-    std::stringstream s;
-    s << "vmci://" << VMCISock_GetLocalCID () << ":" << 5560;
-    std::string endpoint = s.str ();
+  std::stringstream s;
+  s << "vmci://" << VMCISock_GetLocalCID() << ":" << 5560;
+  std::string endpoint = s.str();
 
-    void *sb = zmq_socket (ctx, ZMQ_PAIR);
-    assert (sb);
-    int rc = zmq_bind (sb, endpoint.c_str ());
-    assert (rc == 0);
+  void *sb = zmq_socket(ctx, ZMQ_PAIR);
+  assert (sb);
+  int rc = zmq_bind(sb, endpoint.c_str());
+  assert (rc == 0);
 
-    void *sc = zmq_socket (ctx, ZMQ_PAIR);
-    assert (sc);
-    rc = zmq_connect (sc, endpoint.c_str ());
-    assert (rc == 0);
+  void *sc = zmq_socket(ctx, ZMQ_PAIR);
+  assert (sc);
+  rc = zmq_connect(sc, endpoint.c_str());
+  assert (rc == 0);
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    rc = zmq_close (sc);
-    assert (rc == 0);
+  rc = zmq_close(sc);
+  assert (rc == 0);
 
-    rc = zmq_close (sb);
-    assert (rc == 0);
+  rc = zmq_close(sb);
+  assert (rc == 0);
 
-    rc = zmq_ctx_term (ctx);
-    assert (rc == 0);
+  rc = zmq_ctx_term(ctx);
+  assert (rc == 0);
 
-    return 0;
+  return 0;
 }

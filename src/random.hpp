@@ -32,20 +32,19 @@
 
 #include "stdint.hpp"
 
-namespace zmq
-{
+namespace zmq {
 //  Seeds the random number generator.
-void seed_random ();
+void seed_random();
 
 //  Generates random value.
-uint32_t generate_random ();
+uint32_t generate_random();
 
 //  [De-]Initialise crypto library, if needed.
 //  Serialised and refcounted, so that it can be called
 //  from multiple threads, each with its own context, and from
 //  the various zmq_utils curve functions safely.
-void random_open ();
-void random_close ();
+void random_open();
+void random_close();
 }
 
 #endif

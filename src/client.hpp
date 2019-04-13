@@ -34,40 +34,38 @@
 #include "fq.hpp"
 #include "lb.hpp"
 
-namespace zmq
-{
+namespace zmq {
 class ctx_t;
 class msg_t;
 class pipe_t;
 class io_thread_t;
 
-class client_t : public socket_base_t
-{
-  public:
-    client_t (zmq::ctx_t *parent_, uint32_t tid_, int sid_);
-    ~client_t ();
+class client_t : public socket_base_t {
+ public:
+  client_t(zmq::ctx_t *parent_, uint32_t tid_, int sid_);
+  ~client_t();
 
-  protected:
-    //  Overrides of functions from socket_base_t.
-    void xattach_pipe (zmq::pipe_t *pipe_,
-                       bool subscribe_to_all_,
-                       bool locally_initiated_);
-    int xsend (zmq::msg_t *msg_);
-    int xrecv (zmq::msg_t *msg_);
-    bool xhas_in ();
-    bool xhas_out ();
-    void xread_activated (zmq::pipe_t *pipe_);
-    void xwrite_activated (zmq::pipe_t *pipe_);
-    void xpipe_terminated (zmq::pipe_t *pipe_);
+ protected:
+  //  Overrides of functions from socket_base_t.
+  void xattach_pipe(zmq::pipe_t *pipe_,
+                    bool subscribe_to_all_,
+                    bool locally_initiated_);
+  int xsend(zmq::msg_t *msg_);
+  int xrecv(zmq::msg_t *msg_);
+  bool xhas_in();
+  bool xhas_out();
+  void xread_activated(zmq::pipe_t *pipe_);
+  void xwrite_activated(zmq::pipe_t *pipe_);
+  void xpipe_terminated(zmq::pipe_t *pipe_);
 
-  private:
-    //  Messages are fair-queued from inbound pipes. And load-balanced to
-    //  the outbound pipes.
-    fq_t _fq;
-    lb_t _lb;
+ private:
+  //  Messages are fair-queued from inbound pipes. And load-balanced to
+  //  the outbound pipes.
+  fq_t _fq;
+  lb_t _lb;
 
-    client_t (const client_t &);
-    const client_t &operator= (const client_t &);
+  client_t(const client_t &);
+  const client_t &operator=(const client_t &);
 };
 }
 

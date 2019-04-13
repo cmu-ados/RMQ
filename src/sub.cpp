@@ -31,54 +31,49 @@
 #include "sub.hpp"
 #include "msg.hpp"
 
-zmq::sub_t::sub_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
-    xsub_t (parent_, tid_, sid_)
-{
-    options.type = ZMQ_SUB;
+zmq::sub_t::sub_t(class ctx_t *parent_, uint32_t tid_, int sid_) :
+    xsub_t(parent_, tid_, sid_) {
+  options.type = ZMQ_SUB;
 
-    //  Switch filtering messages on (as opposed to XSUB which where the
-    //  filtering is off).
-    options.filter = true;
+  //  Switch filtering messages on (as opposed to XSUB which where the
+  //  filtering is off).
+  options.filter = true;
 }
 
-zmq::sub_t::~sub_t ()
-{
+zmq::sub_t::~sub_t() {
 }
 
-int zmq::sub_t::xsetsockopt (int option_,
-                             const void *optval_,
-                             size_t optvallen_)
-{
-    if (option_ != ZMQ_SUBSCRIBE && option_ != ZMQ_UNSUBSCRIBE) {
-        errno = EINVAL;
-        return -1;
-    }
-
-    //  Create the subscription message.
-    msg_t msg;
-    int rc = msg.init_size (optvallen_ + 1);
-    errno_assert (rc == 0);
-    unsigned char *data = static_cast<unsigned char *> (msg.data ());
-    *data = (option_ == ZMQ_SUBSCRIBE);
-    //  We explicitly allow a NULL subscription with size zero
-    if (optvallen_) {
-        assert (optval_);
-        memcpy (data + 1, optval_, optvallen_);
-    }
-    //  Pass it further on in the stack.
-    rc = xsub_t::xsend (&msg);
-    return close_and_return (&msg, rc);
-}
-
-int zmq::sub_t::xsend (msg_t *)
-{
-    //  Override the XSUB's send.
-    errno = ENOTSUP;
+int zmq::sub_t::xsetsockopt(int option_,
+                            const void *optval_,
+                            size_t optvallen_) {
+  if (option_ != ZMQ_SUBSCRIBE && option_ != ZMQ_UNSUBSCRIBE) {
+    errno = EINVAL;
     return -1;
+  }
+
+  //  Create the subscription message.
+  msg_t msg;
+  int rc = msg.init_size(optvallen_ + 1);
+  errno_assert (rc == 0);
+  unsigned char *data = static_cast<unsigned char *> (msg.data());
+  *data = (option_ == ZMQ_SUBSCRIBE);
+  //  We explicitly allow a NULL subscription with size zero
+  if (optvallen_) {
+    assert (optval_);
+    memcpy(data + 1, optval_, optvallen_);
+  }
+  //  Pass it further on in the stack.
+  rc = xsub_t::xsend(&msg);
+  return close_and_return(&msg, rc);
 }
 
-bool zmq::sub_t::xhas_out ()
-{
-    //  Override the XSUB's send.
-    return false;
+int zmq::sub_t::xsend(msg_t *) {
+  //  Override the XSUB's send.
+  errno = ENOTSUP;
+  return -1;
+}
+
+bool zmq::sub_t::xhas_out() {
+  //  Override the XSUB's send.
+  return false;
 }

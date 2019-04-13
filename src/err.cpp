@@ -31,61 +31,54 @@
 #include "err.hpp"
 #include "macros.hpp"
 
-const char *zmq::errno_to_string (int errno_)
-{
-    switch (errno_) {
+const char *zmq::errno_to_string(int errno_) {
+  switch (errno_) {
 #if defined ZMQ_HAVE_WINDOWS
-        case ENOTSUP:
-            return "Not supported";
-        case EPROTONOSUPPORT:
-            return "Protocol not supported";
-        case ENOBUFS:
-            return "No buffer space available";
-        case ENETDOWN:
-            return "Network is down";
-        case EADDRINUSE:
-            return "Address in use";
-        case EADDRNOTAVAIL:
-            return "Address not available";
-        case ECONNREFUSED:
-            return "Connection refused";
-        case EINPROGRESS:
-            return "Operation in progress";
+    case ENOTSUP:
+        return "Not supported";
+    case EPROTONOSUPPORT:
+        return "Protocol not supported";
+    case ENOBUFS:
+        return "No buffer space available";
+    case ENETDOWN:
+        return "Network is down";
+    case EADDRINUSE:
+        return "Address in use";
+    case EADDRNOTAVAIL:
+        return "Address not available";
+    case ECONNREFUSED:
+        return "Connection refused";
+    case EINPROGRESS:
+        return "Operation in progress";
 #endif
-        case EFSM:
-            return "Operation cannot be accomplished in current state";
-        case ENOCOMPATPROTO:
-            return "The protocol is not compatible with the socket type";
-        case ETERM:
-            return "Context was terminated";
-        case EMTHREAD:
-            return "No thread available";
-        case EHOSTUNREACH:
-            return "Host unreachable";
-        default:
+    case EFSM:return "Operation cannot be accomplished in current state";
+    case ENOCOMPATPROTO:return "The protocol is not compatible with the socket type";
+    case ETERM:return "Context was terminated";
+    case EMTHREAD:return "No thread available";
+    case EHOSTUNREACH:return "Host unreachable";
+    default:
 #if defined _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4996)
 #endif
-            return strerror (errno_);
+      return strerror(errno_);
 #if defined _MSC_VER
 #pragma warning(pop)
 #endif
-    }
+  }
 }
 
-void zmq::zmq_abort (const char *errmsg_)
-{
+void zmq::zmq_abort(const char *errmsg_) {
 #if defined ZMQ_HAVE_WINDOWS
 
-    //  Raise STATUS_FATAL_APP_EXIT.
-    ULONG_PTR extra_info[1];
-    extra_info[0] = (ULONG_PTR) errmsg_;
-    RaiseException (0x40000015, EXCEPTION_NONCONTINUABLE, 1, extra_info);
+  //  Raise STATUS_FATAL_APP_EXIT.
+  ULONG_PTR extra_info[1];
+  extra_info[0] = (ULONG_PTR) errmsg_;
+  RaiseException (0x40000015, EXCEPTION_NONCONTINUABLE, 1, extra_info);
 #else
-    LIBZMQ_UNUSED (errmsg_);
-    print_backtrace ();
-    abort ();
+  LIBZMQ_UNUSED (errmsg_);
+  print_backtrace();
+  abort();
 #endif
 }
 
@@ -445,8 +438,7 @@ void zmq::print_backtrace (void)
 
 #else
 
-void zmq::print_backtrace ()
-{
+void zmq::print_backtrace() {
 }
 
 #endif

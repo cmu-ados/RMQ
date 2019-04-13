@@ -32,59 +32,55 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_x ()
-{
-    const char *bind_to = "tcp://127.0.0.1:*";
-    size_t len = MAX_SOCKET_STRING;
-    char my_endpoint[MAX_SOCKET_STRING];
+void test_x() {
+  const char *bind_to = "tcp://127.0.0.1:*";
+  size_t len = MAX_SOCKET_STRING;
+  char my_endpoint[MAX_SOCKET_STRING];
 
-    int rc;
+  int rc;
 
-    void *s_in = test_context_socket (ZMQ_PULL);
+  void *s_in = test_context_socket(ZMQ_PULL);
 
-    int conflate = 1;
+  int conflate = 1;
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_setsockopt(s_in, ZMQ_CONFLATE, &conflate, sizeof(conflate)));
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(s_in, bind_to));
+  TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_getsockopt(s_in, ZMQ_LAST_ENDPOINT, my_endpoint, &len));
+
+  void *s_out = test_context_socket(ZMQ_PUSH);
+
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(s_out, my_endpoint));
+
+  int message_count = 20;
+  for (int j = 0; j < message_count; ++j) {
     TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_setsockopt (s_in, ZMQ_CONFLATE, &conflate, sizeof (conflate)));
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (s_in, bind_to));
-    TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_getsockopt (s_in, ZMQ_LAST_ENDPOINT, my_endpoint, &len));
+        zmq_send(s_out, (void *) &j, sizeof(int), 0));
+  }
+  msleep(SETTLE_TIME);
 
-    void *s_out = test_context_socket (ZMQ_PUSH);
+  int payload_recved = 0;
+  rc = TEST_ASSERT_SUCCESS_ERRNO (
+      zmq_recv(s_in, (void *) &payload_recved, sizeof(int), 0));
+  TEST_ASSERT_GREATER_THAN_INT (0, rc);
+  TEST_ASSERT_EQUAL_INT (message_count - 1, payload_recved);
 
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (s_out, my_endpoint));
-
-    int message_count = 20;
-    for (int j = 0; j < message_count; ++j) {
-        TEST_ASSERT_SUCCESS_ERRNO (
-          zmq_send (s_out, (void *) &j, sizeof (int), 0));
-    }
-    msleep (SETTLE_TIME);
-
-    int payload_recved = 0;
-    rc = TEST_ASSERT_SUCCESS_ERRNO (
-      zmq_recv (s_in, (void *) &payload_recved, sizeof (int), 0));
-    TEST_ASSERT_GREATER_THAN_INT (0, rc);
-    TEST_ASSERT_EQUAL_INT (message_count - 1, payload_recved);
-
-    test_context_socket_close (s_in);
-    test_context_socket_close (s_out);
+  test_context_socket_close(s_in);
+  test_context_socket_close(s_out);
 }
 
-int main (int, char *[])
-{
-    setup_test_environment ();
+int main(int, char *[]) {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_x);
-    return UNITY_END ();
+  UNITY_BEGIN ();
+  RUN_TEST (test_x);
+  return UNITY_END ();
 }

@@ -32,35 +32,31 @@
 
 #include <unity.h>
 
-void setUp ()
-{
-    setup_test_context ();
+void setUp() {
+  setup_test_context();
 }
 
-void tearDown ()
-{
-    teardown_test_context ();
+void tearDown() {
+  teardown_test_context();
 }
 
-void test_roundtrip ()
-{
-    void *sb = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_bind (sb, "ipc:///tmp/test_pair_ipc"));
+void test_roundtrip() {
+  void *sb = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_bind(sb, "ipc:///tmp/test_pair_ipc"));
 
-    void *sc = test_context_socket (ZMQ_PAIR);
-    TEST_ASSERT_SUCCESS_ERRNO (zmq_connect (sc, "ipc:///tmp/test_pair_ipc"));
+  void *sc = test_context_socket(ZMQ_PAIR);
+  TEST_ASSERT_SUCCESS_ERRNO (zmq_connect(sc, "ipc:///tmp/test_pair_ipc"));
 
-    bounce (sb, sc);
+  bounce(sb, sc);
 
-    test_context_socket_close (sc);
-    test_context_socket_close (sb);
+  test_context_socket_close(sc);
+  test_context_socket_close(sb);
 }
 
-int main (void)
-{
-    setup_test_environment ();
+int main(void) {
+  setup_test_environment();
 
-    UNITY_BEGIN ();
-    RUN_TEST (test_roundtrip);
-    return UNITY_END ();
+  UNITY_BEGIN ();
+  RUN_TEST (test_roundtrip);
+  return UNITY_END ();
 }
