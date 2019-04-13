@@ -21,44 +21,57 @@ class ib_res_t {
   size_t _ib_buf_size;
 
   mutex_t _ib_sync;
-  ib_res_t() {
-    memset(this, 0, sizeof(ib_res_t));
+  bool _initalized;
+  ib_res_t()
+      : _ctx(nullptr),
+        _pd(nullptr),
+        _mr(nullptr),
+        _cq(nullptr),
+        _qp(nullptr),
+        _srq(nullptr),
+        _num_qps(0),
+        _ib_buf(nullptr),
+        _ib_buf_size(0),
+        _initalized(false) {
+    memset(&_port_attr, 0, sizeof(ibv_port_attr));
+    memset(&_dev_attr, 0, sizeof(ibv_device_attr));
   }
 
-  int setup(int num_qps, int buf_size) {
-    ibv_device **dev_list = NULL;
+  void setup(int num_qps, int buf_size) {
+    scoped_lock_t get_ib_sync(_ib_sync);
+    ibv_device **dev_list = nullptr;
 
     _num_qps = num_qps;
 
-    dev_list = ibv_get_device_list(NULL);
-    assert(dev_list != NULL);
+    dev_list = ibv_get_device_list(nullptr);
+    zmq_assert(dev_list != nullptr);
 
     _ctx = ibv_open_device(*dev_list);
-    assert(_ctx != NULL);
+    zmq_assert(_ctx != nullptr);
 
     _pd = ibv_alloc_pd(_ctx);
-    assert(_pd != NULL);
+    zmq_assert(_pd != nullptr);
 
     int ret = ibv_query_port(_ctx, 1, &_port_attr);
-    assert(ret == 0);
+    zmq_assert(ret == 0);
 
     _ib_buf_size = buf_size;
     posix_memalign((void **) (&_ib_buf), 4096, _ib_buf_size);
-    assert(_ib_buf != NULL);
+    zmq_assert(_ib_buf != nullptr);
 
     _mr = ibv_reg_mr(_pd, (void *) _ib_buf,
                      _ib_buf_size,
                      IBV_ACCESS_LOCAL_WRITE |
                          IBV_ACCESS_REMOTE_READ |
                          IBV_ACCESS_REMOTE_WRITE);
-    assert(_mr != NULL);
+    zmq_assert(_mr != nullptr);
 
     ret = ibv_query_device(_ctx, &_dev_attr);
-    assert(ret == 0);
+    zmq_assert(ret == 0);
 
     _cq = ibv_create_cq(_ctx, _dev_attr.max_cqe,
-                        NULL, NULL, 0);
-    assert(_cq != NULL);
+                        nullptr, nullptr, 0);
+    zmq_assert(_cq != nullptr);
 
     struct ibv_srq_init_attr srq_init_attr;
 
@@ -80,42 +93,43 @@ class ib_res_t {
 
     _qp = (struct ibv_qp **) calloc(_num_qps,
                                     sizeof(struct ibv_qp *));
-    assert(_qp != NULL);
+    zmq_assert(_qp != nullptr);
 
     for (int i = 0; i < _num_qps; i++) {
       _qp[i] = ibv_create_qp(_pd, &qp_init_attr);
-      assert(_qp[i] != NULL);
+      zmq_assert(_qp[i] != nullptr);
     }
-
     ibv_free_device_list(dev_list);
-    return 0;
+    _initalized = true;
   }
+
   void close() {
-    if (_qp != NULL) {
+    scoped_lock_t get_ib_sync(_ib_sync);
+    if (_qp != nullptr) {
       for (int i = 0; i < _num_qps; i++) {
-        if (_qp[i] != NULL) {
+        if (_qp[i] != nullptr) {
           ibv_destroy_qp(_qp[i]);
         }
       }
       free(_qp);
     }
 
-    if (_srq != NULL)
+    if (_srq != nullptr)
       ibv_destroy_srq(_srq);
-    if (_cq != NULL) {
+    if (_cq != nullptr) {
       ibv_destroy_cq(_cq);
     }
-    if (_mr != NULL) {
+    if (_mr != nullptr) {
       ibv_dereg_mr(_mr);
     }
 
-    if (_pd != NULL) {
+    if (_pd != nullptr) {
       ibv_dealloc_pd(_pd);
     }
-    if (_ctx != NULL) {
+    if (_ctx != nullptr) {
       ibv_close_device(_ctx);
     }
-    if (_ib_buf != NULL) {
+    if (_ib_buf != nullptr) {
       free(_ib_buf);
     }
   }
