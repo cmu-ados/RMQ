@@ -913,10 +913,6 @@ if (WITH_RDMA)
     add_definitions(-DZMQ_HAVE_RDMA)
     list(APPEND cxx-sources rdma_address.hpp rdma_connecter.hpp rdma_engine.hpp rdma_listener.hpp
             rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp)
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        target_link_libraries(libzmq ibverbs)
-        target_link_libraries(libzmq-static ibverbs)
-    endif()
 endif ()
 
 #-----------------------------------------------------------------------------
@@ -1171,7 +1167,13 @@ if (BUILD_SHARED)
     if (RT_LIBRARY)
         target_link_libraries(libzmq -lrt)
     endif ()
-endif ()
+
+    if (WITH_RDMA)
+        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+                target_link_libraries(libzmq ibverbs)
+        endif()
+    endif ()
+endif()
 
 if (BUILD_STATIC)
 
@@ -1201,6 +1203,12 @@ if (BUILD_STATIC)
 
     if (RT_LIBRARY)
         target_link_libraries(libzmq-static -lrt)
+    endif ()
+
+    if (WITH_RDMA)
+        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+            target_link_libraries(libzmq-static ibverbs)
+        endif()
     endif ()
 endif ()
 
