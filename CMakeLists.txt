@@ -1221,11 +1221,12 @@ if (BUILD_SHARED)
             inproc_lat
             inproc_thr)
 
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug") # Why?
-        option(WITH_PERF_TOOL "Build with perf-tools" ON)
-    else ()
-        option(WITH_PERF_TOOL "Build with perf-tools" OFF)
-    endif ()
+    option(WITH_PERF_TOOL "Build with perf-tools" ON)
+    #if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug") # Why?
+    #    option(WITH_PERF_TOOL "Build with perf-tools" ON)
+    #else ()
+    #    option(WITH_PERF_TOOL "Build with perf-tools" OFF)
+    #endif ()
 
     if (WITH_PERF_TOOL)
         foreach (perf-tool ${perf-tools})
