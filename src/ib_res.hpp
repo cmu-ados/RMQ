@@ -2,6 +2,7 @@
 #define __ZEROMQ_IB_RES_HPP_INCLUDED__
 
 #include <cstdio>
+#include <vector>
 #include <infiniband/verbs.h>
 
 namespace zmq {
@@ -20,6 +21,10 @@ class ib_res_t {
   char *_ib_buf;
   size_t _ib_buf_size;
 
+  //  List of unused thread queue pairs
+  typedef std::vector<ibv_qp *> unused_qps_t;
+  unused_qps_t _unused_qps;
+
   mutex_t _ib_sync;
   bool _initalized;
   ib_res_t()
@@ -37,8 +42,35 @@ class ib_res_t {
     memset(&_dev_attr, 0, sizeof(ibv_device_attr));
   }
 
+  ibv_qp *create_qp() {
+    scoped_lock_t get_ib_sync(_ib_sync);
+    assert(_initalized);
+    if (_unused_qps.empty()) {
+      return nullptr;
+    }
+    auto qp_idx = _unused_qps.back();
+    _unused_qps.pop_back();
+    return qp_idx;
+  }
+
+  void destroy_qp(ibv_qp *qp) {
+    scoped_lock_t get_ib_sync(_ib_sync);
+    assert(_initalized);
+    bool flag = false;
+    for (int i = 0; i < _num_qps; ++i) {
+      if (_qp[i] == qp) {
+        flag = true;
+        break;
+      }
+    }
+    assert(flag);
+    _unused_qps.push_back(qp);
+  }
+
   void setup(int num_qps, int buf_size) {
     scoped_lock_t get_ib_sync(_ib_sync);
+    assert(!_initalized);
+
     ibv_device **dev_list = nullptr;
 
     _num_qps = num_qps;
@@ -93,10 +125,12 @@ class ib_res_t {
 
     _qp = (struct ibv_qp **) calloc(_num_qps,
                                     sizeof(struct ibv_qp *));
+    _unused_qps.reserve(_num_qps);
     zmq_assert(_qp != nullptr);
 
     for (int i = 0; i < _num_qps; i++) {
       _qp[i] = ibv_create_qp(_pd, &qp_init_attr);
+      _unused_qps.push_back(_qp[i]);
       zmq_assert(_qp[i] != nullptr);
     }
     ibv_free_device_list(dev_list);
@@ -133,6 +167,7 @@ class ib_res_t {
       free(_ib_buf);
     }
   }
+
 };
 }
 
