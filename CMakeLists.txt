@@ -915,6 +915,8 @@ if(WITH_RDMA)
           rdma_connecter.hpp
           rdma_engine.hpp
           rdma_listener.hpp rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp)
+  target_link_libraries(libzmq ibverbs)
+  target_link_libraries(libzmq-static ibverbs)
 endif()
 
 #-----------------------------------------------------------------------------
@@ -1141,8 +1143,7 @@ foreach(target ${target_outputs})
 endforeach()
 
 if(BUILD_SHARED)
-  # RDMA: add libibverbs
-  target_link_libraries(libzmq ibverbs)
+
   target_link_libraries(libzmq ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
   if(SODIUM_FOUND)
@@ -1173,8 +1174,7 @@ if(BUILD_SHARED)
 endif()
 
 if(BUILD_STATIC)
-  # RDMA: add libibverbs
-  target_link_libraries(libzmq-static ibverbs)
+
   target_link_libraries(libzmq-static ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
   if(SODIUM_FOUND)

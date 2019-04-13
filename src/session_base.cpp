@@ -44,14 +44,18 @@
 #include "address.hpp"
 #include "norm_engine.hpp"
 #include "udp_engine.hpp"
-#include "rdma_engine.hpp"
+
 
 #include "ctx.hpp"
 #include "req.hpp"
 #include "radio.hpp"
 #include "dish.hpp"
 
+#ifdef ZMQ_HAVE_RDMA
+#include "rdma_engine.hpp"
 #include "rdma_connecter.hpp"
+#endif
+
 
 zmq::session_base_t *zmq::session_base_t::create (class io_thread_t *io_thread_,
                                                   bool active_,

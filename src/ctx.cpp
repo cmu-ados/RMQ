@@ -47,7 +47,11 @@
 #include "err.hpp"
 #include "msg.hpp"
 #include "random.hpp"
+
+
+#ifdef ZMQ_HAVE_RDMA
 #include "ib_res.hpp"
+#endif
 
 #ifdef ZMQ_HAVE_VMCI
 #include <vmci_sockets.h>
