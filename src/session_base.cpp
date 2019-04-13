@@ -444,15 +444,14 @@ void zmq::session_base_t::engine_error(
 }
 
 #ifdef ZMQ_HAVE_RDMA
-void zmq::session_base_t::engine_error (
-    zmq::rdma_engine_t::error_reason_t reason_)
-{
+void zmq::session_base_t::engine_error(
+    zmq::rdma_engine_t::error_reason_t reason_) {
   //  Engine is dead. Let's forget about it.
   _engine = NULL;
 
   //  Remove any half-done messages from the pipes.
   if (_pipe)
-    clean_pipes ();
+    clean_pipes();
 
   zmq_assert (reason_ == rdma_engine_t::connection_error
                   || reason_ == rdma_engine_t::timeout_error
@@ -463,28 +462,28 @@ void zmq::session_base_t::engine_error (
       /* FALLTHROUGH */
     case rdma_engine_t::connection_error:
       if (_active) {
-        reconnect ();
+        reconnect();
         break;
       }
       /* FALLTHROUGH */
     case rdma_engine_t::protocol_error:
       if (_pending) {
         if (_pipe)
-          _pipe->terminate (false);
+          _pipe->terminate(false);
         if (_zap_pipe)
-          _zap_pipe->terminate (false);
+          _zap_pipe->terminate(false);
       } else {
-        terminate ();
+        terminate();
       }
       break;
   }
 
   //  Just in case there's only a delimiter in the pipe.
   if (_pipe)
-    _pipe->check_read ();
+    _pipe->check_read();
 
   if (_zap_pipe)
-    _zap_pipe->check_read ();
+    _zap_pipe->check_read();
 }
 #endif
 
@@ -578,8 +577,8 @@ zmq::session_base_t::connecter_factory_entry_t
     connecter_factory_entry_t(protocol_name::tcp,
                               &zmq::session_base_t::create_connecter_tcp),
 #ifdef ZMQ_HAVE_RDMA
-connecter_factory_entry_t (protocol_name::rdma,
-                           &zmq::session_base_t::create_connecter_rdma),
+    connecter_factory_entry_t(protocol_name::rdma,
+                              &zmq::session_base_t::create_connecter_rdma),
 #endif
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
   && !defined ZMQ_HAVE_VXWORKS
@@ -696,18 +695,17 @@ zmq::own_t *zmq::session_base_t::create_connecter_tcp(io_thread_t *io_thread_,
 
 #ifdef ZMQ_HAVE_RDMA
 // FIXME: The create_connecter_rdma is the same as TCP for now!
-zmq::own_t *zmq::session_base_t::create_connecter_rdma (io_thread_t *io_thread_,
-                                                       bool wait_)
-{
-    if (!options.socks_proxy_address.empty ()) {
-        address_t *proxy_address = new (std::nothrow) address_t (
-                protocol_name::rdma, options.socks_proxy_address, this->get_ctx ());
-        alloc_assert (proxy_address);
-        return new (std::nothrow) socks_connecter_t (
-                io_thread_, this, options, _addr, proxy_address, wait_);
-    }
-    return new (std::nothrow)
-            rdma_connecter_t (io_thread_, this, options, _addr, wait_);
+zmq::own_t *zmq::session_base_t::create_connecter_rdma(io_thread_t *io_thread_,
+                                                       bool wait_) {
+  if (!options.socks_proxy_address.empty()) {
+    address_t *proxy_address = new(std::nothrow) address_t(
+        protocol_name::rdma, options.socks_proxy_address, this->get_ctx());
+    alloc_assert (proxy_address);
+    return new(std::nothrow) socks_connecter_t(
+        io_thread_, this, options, _addr, proxy_address, wait_);
+  }
+  return new(std::nothrow)
+      rdma_connecter_t(io_thread_, this, options, _addr, wait_);
 }
 #endif
 

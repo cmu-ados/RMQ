@@ -82,7 +82,7 @@ int zmq::address_t::to_string(std::string &addr_) const {
     return resolved.tcp_addr->to_string(addr_);
 #ifdef ZMQ_HAVE_RDMA
   if (protocol == protocol_name::rdma && resolved.rdma_addr)
-      return resolved.rdma_addr->to_string(addr_);
+    return resolved.rdma_addr->to_string(addr_);
 #endif
   if (protocol == protocol_name::udp && resolved.udp_addr)
     return resolved.udp_addr->to_string(addr_);
