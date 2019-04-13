@@ -349,7 +349,6 @@ bool zmq::ctx_t::start() {
   }
 
 #ifdef ZMQ_HAVE_RDMA
-  // RDMA: init ib resources
   setup_ib();
 #endif
 
