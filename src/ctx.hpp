@@ -265,8 +265,6 @@ class ctx_t : public thread_ctx_t {
 #ifdef ZMQ_HAVE_RDMA
   // RDMA: Infiniband related resources
   ib_res_t _ib_res;
-  int setup_ib();
-  void close_ib();
 #endif
 
 };
