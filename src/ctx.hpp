@@ -44,7 +44,7 @@
 #include "atomic_counter.hpp"
 #include "thread.hpp"
 #ifdef ZMQ_HAVE_RDMA
-#include "ib_res.hpp"
+#include "rdma.hpp"
 #endif
 
 namespace zmq {
@@ -143,6 +143,7 @@ class ctx_t : public thread_ctx_t {
 #ifdef ZMQ_HAVE_RDMA
   ibv_qp *create_queue_pair();
   void destroy_queue_pair(ibv_qp *qp);
+  const zmq::ib_res_t &get_ib_res();
 #endif
 
 #ifdef ZMQ_HAVE_VMCI

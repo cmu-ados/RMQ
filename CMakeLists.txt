@@ -753,7 +753,6 @@ set(cxx-sources
         i_engine.hpp
         i_mailbox.hpp
         i_poll_events.hpp
-        ib_res.hpp
         io_object.hpp
         io_thread.hpp
         ip.hpp
@@ -911,8 +910,8 @@ endif ()
 
 if (WITH_RDMA)
     add_definitions(-DZMQ_HAVE_RDMA)
-    list(APPEND cxx-sources rdma_address.hpp rdma_connecter.hpp rdma_engine.hpp rdma_listener.hpp
-            rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp)
+    list(APPEND cxx-sources rdma_address.hpp rdma_connecter.hpp rdma_engine.hpp rdma_listener.hpp rdma.hpp
+            rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp rdma.cpp)
 endif ()
 
 #-----------------------------------------------------------------------------

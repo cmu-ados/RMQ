@@ -111,7 +111,43 @@ void zmq::rdma_listener_t::in_event() {
   }
 
   // FIXME: Should change to rdma_engine_t
-  //  Create the engine object for this connection.
+  // Create the engine object for this connection.
+  ibv_qp *qp = get_ctx()->create_queue_pair();
+  zmq_assert (qp != nullptr);
+
+  qp_info_t local_qp_info, remote_qp_info;
+
+  local_qp_info.lid = get_ctx()->get_ib_res()._port_attr.lid;
+  local_qp_info.qp_num = qp->qp_num;
+  // FIXME: What is the meaning of the rank?
+  local_qp_info.rank = 233;
+
+  int n1, n2;
+  n1 = get_qp_info(fd, &remote_qp_info);
+  zmq_assert(n1 == 0);
+  n2 = set_qp_info(fd, &local_qp_info);
+  zmq_assert(n2 == 0);
+
+  printf("RDMA LISTENER: send: (%d, %d) %d %d %d\n",
+         n1,
+         n2,
+         local_qp_info.lid,
+         local_qp_info.qp_num,
+         local_qp_info.rank);
+  printf("RDMA LISTENER: recv: (%d, %d) %d %d %d\n",
+         n1,
+         n2,
+         remote_qp_info.lid,
+         remote_qp_info.qp_num,
+         remote_qp_info.rank);
+
+  char buf[300] = {0};
+  tcp_read(fd, buf, sizeof("shit!!!"));
+  printf("RDMA LISTENER: recv: %s\n", buf);
+
+  tcp_write(fd, "fuck!!!", sizeof("fuck!!!"));
+  get_ctx()->destroy_queue_pair(qp);
+
   rdma_engine_t *engine =
       new(std::nothrow) rdma_engine_t(fd, options, _endpoint);
   alloc_assert (engine);

@@ -148,6 +148,45 @@ void zmq::rdma_connecter_t::out_event() {
     return;
   }
 
+  ibv_qp *qp = get_ctx()->create_queue_pair();
+  zmq_assert (qp != nullptr);
+  qp_info_t local_qp_info, remote_qp_info;
+
+  local_qp_info.lid = get_ctx()->get_ib_res()._port_attr.lid;
+  local_qp_info.qp_num = qp->qp_num;
+  // FIXME: What is the meaning of the rank?
+  local_qp_info.rank = 332;
+
+  int n1, n2;
+  n2 = set_qp_info(fd, &local_qp_info);
+  zmq_assert(n2 == 0);
+  n1 = get_qp_info(fd, &remote_qp_info);
+  zmq_assert(n1 == 0);
+
+  printf("RDMA CONNECTOR: send: (%d, %d) %d %d %d\n",
+         n1,
+         n2,
+         local_qp_info.lid,
+         local_qp_info.qp_num,
+         local_qp_info.rank);
+  printf("RDMA CONNECTOR: recv: (%d, %d) %d %d %d\n",
+         n1,
+         n2,
+         remote_qp_info.lid,
+         remote_qp_info.qp_num,
+         remote_qp_info.rank);
+
+  int n = tcp_write(fd, "shit!!!", sizeof("shit!!!"));
+  zmq_assert(n == sizeof("shit!!!"));
+
+  char buf[300] = {0};
+  n = tcp_read(fd, buf, sizeof("fuck!!!"));
+  zmq_assert(n == sizeof("fuck!!!"));
+
+  printf("RDMA CONNECTOR: recv: %s\n", buf);
+  get_ctx()->destroy_queue_pair(qp);
+
+
   //  Create the engine object for this connection.
   rdma_engine_t *engine =
       new(std::nothrow) rdma_engine_t(fd, options, _endpoint);
@@ -183,7 +222,6 @@ void zmq::rdma_connecter_t::timer_event(int id_) {
 void zmq::rdma_connecter_t::start_connecting() {
   //  Open the connecting socket.
   const int rc = open();
-
   //  Connect may succeed in synchronous manner.
   if (rc == 0) {
     _handle = add_fd(_s);
@@ -290,8 +328,9 @@ int zmq::rdma_connecter_t::open() {
   if (!options.bound_device.empty())
     bind_to_device(_s, options.bound_device);
 
+  // FIXME: The TCP socket is set to blocking!!!
   // Set the socket to non-blocking mode so that we get async connect().
-  unblock_socket(_s);
+  // unblock_socket(_s);
 
   // Set the socket to loopback fastpath if configured.
   if (options.loopback_fastpath)

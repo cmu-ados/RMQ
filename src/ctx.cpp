@@ -50,7 +50,7 @@
 
 #ifdef ZMQ_HAVE_RDMA
 #include <infiniband/verbs.h>
-#include "ib_res.hpp"
+#include "rdma.hpp"
 #endif
 
 #ifdef ZMQ_HAVE_VMCI
@@ -685,6 +685,10 @@ ibv_qp *zmq::ctx_t::create_queue_pair() {
 
 void zmq::ctx_t::destroy_queue_pair(ibv_qp *qp) {
   _ib_res.destroy_qp(qp);
+}
+
+const zmq::ib_res_t &zmq::ctx_t::get_ib_res() {
+  return _ib_res;
 }
 #endif
 

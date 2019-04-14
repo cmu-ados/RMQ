@@ -4,8 +4,22 @@
 #include <cstdio>
 #include <vector>
 #include <infiniband/verbs.h>
+#include <arpa/inet.h>
+#include "mutex.hpp"
+#include "tcp.hpp"
 
 namespace zmq {
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define htonll(x) ((1==htonl(1)) ? (x) : (((uint64_t)htonl((x) & 0xFFFFFFFFUL)) << 32) | htonl((uint32_t)((x) >> 32)))
+#define ntohll(x) ((1==ntohl(1)) ? (x) : (((uint64_t)ntohl((x) & 0xFFFFFFFFUL)) << 32) | ntohl((uint32_t)((x) >> 32)))
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static inline uint64_t htonll (uint64_t x) {return x; }
+static inline uint64_t ntohll (uint64_t x) {return x; }
+#else
+#error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
+#endif
+
 // structure for IB resources
 class ib_res_t {
  public:
@@ -169,6 +183,17 @@ class ib_res_t {
   }
 
 };
+
+class qp_info_t {
+ public:
+  uint16_t lid;
+  uint32_t qp_num;
+  uint32_t rank;
+};
+
+int get_qp_info(int fd, qp_info_t *qp_info);
+int set_qp_info(int fd, qp_info_t *qp_info);
+
 }
 
 #endif // __ZEROMQ_IB_RES_HPP_INCLUDED__

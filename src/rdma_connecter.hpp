@@ -34,7 +34,7 @@
 #include "own.hpp"
 #include "stdint.hpp"
 #include "io_object.hpp"
-#include "ib_res.hpp"
+#include "rdma.hpp"
 
 namespace zmq {
 class io_thread_t;
