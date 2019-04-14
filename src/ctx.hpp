@@ -139,6 +139,12 @@ class ctx_t : public thread_ctx_t {
                        pipe_t **pipes_);
   void connect_pending(const char *addr_, zmq::socket_base_t *bind_socket_);
 
+  // Create and destroy a RDMA queue pair
+#ifdef ZMQ_HAVE_RDMA
+  ibv_qp *create_queue_pair();
+  void destroy_queue_pair(ibv_qp *qp);
+#endif
+
 #ifdef ZMQ_HAVE_VMCI
   // Return family for the VMCI socket or -1 if it's not available.
   int get_vmci_socket_family ();

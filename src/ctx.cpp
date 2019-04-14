@@ -676,6 +676,18 @@ void zmq::ctx_t::connect_inproc_sockets(
   }
 }
 
+#ifdef ZMQ_HAVE_RDMA
+
+ibv_qp *zmq::ctx_t::create_queue_pair() {
+  ibv_qp *qp = _ib_res.create_qp();
+  return qp;
+}
+
+void zmq::ctx_t::destroy_queue_pair(ibv_qp *qp) {
+  _ib_res.destroy_qp(qp);
+}
+#endif
+
 #ifdef ZMQ_HAVE_VMCI
 
 int zmq::ctx_t::get_vmci_socket_family ()

@@ -48,9 +48,9 @@ class ib_res_t {
     if (_unused_qps.empty()) {
       return nullptr;
     }
-    auto qp_idx = _unused_qps.back();
+    auto qp = _unused_qps.back();
     _unused_qps.pop_back();
-    return qp_idx;
+    return qp;
   }
 
   void destroy_qp(ibv_qp *qp) {
