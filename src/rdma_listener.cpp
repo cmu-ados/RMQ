@@ -119,8 +119,6 @@ void zmq::rdma_listener_t::in_event() {
 
   local_qp_info.lid = get_ctx()->get_ib_res()._port_attr.lid;
   local_qp_info.qp_num = qp->qp_num;
-  // FIXME: What is the meaning of the rank?
-  local_qp_info.rank = 233;
 
   int n1, n2;
   n1 = get_qp_info(fd, &remote_qp_info);
@@ -128,18 +126,16 @@ void zmq::rdma_listener_t::in_event() {
   n2 = set_qp_info(fd, &local_qp_info);
   zmq_assert(n2 == 0);
 
-  printf("RDMA LISTENER: send: (%d, %d) %d %d %d\n",
+  printf("RDMA LISTENER: send: (%d, %d) %d %d\n",
          n1,
          n2,
          local_qp_info.lid,
-         local_qp_info.qp_num,
-         local_qp_info.rank);
-  printf("RDMA LISTENER: recv: (%d, %d) %d %d %d\n",
+         local_qp_info.qp_num);
+  printf("RDMA LISTENER: recv: (%d, %d) %d %d\n",
          n1,
          n2,
          remote_qp_info.lid,
-         remote_qp_info.qp_num,
-         remote_qp_info.rank);
+         remote_qp_info.qp_num);
 
   char buf[300] = {0};
   tcp_read(fd, buf, sizeof("shit!!!"));

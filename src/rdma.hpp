@@ -188,11 +188,30 @@ class qp_info_t {
  public:
   uint16_t lid;
   uint32_t qp_num;
-  uint32_t rank;
 };
 
+/**
+ *
+ * @param fd
+ * @param qp_info
+ * @return
+ */
 int get_qp_info(int fd, qp_info_t *qp_info);
+/**
+ *
+ * @param fd
+ * @param qp_info
+ * @return
+ */
 int set_qp_info(int fd, qp_info_t *qp_info);
+/**
+ *
+ * @param qp
+ * @param target_qp_num
+ * @param target_lid
+ * @return
+ */
+int set_qp_to_rts (ibv_qp *qp, uint32_t target_qp_num, uint16_t target_lid);
 
 }
 
