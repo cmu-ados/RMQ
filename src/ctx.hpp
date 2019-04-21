@@ -45,6 +45,7 @@
 #include "thread.hpp"
 #ifdef ZMQ_HAVE_RDMA
 #include "ib.hpp"
+#include "ib_mgr.hpp"
 #endif
 
 namespace zmq {
@@ -272,6 +273,7 @@ class ctx_t : public thread_ctx_t {
 #ifdef ZMQ_HAVE_RDMA
   // RDMA: Infiniband related resources
   ib_res_t _ib_res;
+  ib_mgr_t _ib_mgr;
 #endif
 
 };

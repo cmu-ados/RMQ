@@ -910,7 +910,7 @@ endif ()
 
 if (WITH_RDMA)
     add_definitions(-DZMQ_HAVE_RDMA)
-    list(APPEND cxx-sources ib_address.hpp ib_connecter.hpp ib_engine.hpp ib_listener.hpp ib_poller.hpp ib.hpp
+    list(APPEND cxx-sources ib_address.hpp ib_connecter.hpp ib_engine.hpp ib_listener.hpp ib_poller.hpp ib.hpp ib_mgr.hpp
             ib_address.cpp ib_connecter.cpp ib_engine.cpp ib_listener.cpp ib.cpp)
 endif ()
 
