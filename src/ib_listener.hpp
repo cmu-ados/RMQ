@@ -34,18 +34,18 @@
 #include "own.hpp"
 #include "stdint.hpp"
 #include "io_object.hpp"
-#include "rdma_address.hpp"
+#include "ib_address.hpp"
 
 namespace zmq {
 class io_thread_t;
 class socket_base_t;
 
-class rdma_listener_t : public own_t, public io_object_t {
+class ib_listener_t : public own_t, public io_object_t {
  public:
-  rdma_listener_t(zmq::io_thread_t *io_thread_,
+  ib_listener_t(zmq::io_thread_t *io_thread_,
                   zmq::socket_base_t *socket_,
                   const options_t &options_);
-  ~rdma_listener_t();
+  ~ib_listener_t();
 
   //  Set address to listen on.
   int set_address(const char *addr_);
@@ -71,7 +71,7 @@ class rdma_listener_t : public own_t, public io_object_t {
   fd_t accept();
 
   //  Address to listen on.
-  rdma_address_t _address;
+  ib_address_t _address;
 
   //  Underlying socket.
   fd_t _s;
@@ -85,8 +85,8 @@ class rdma_listener_t : public own_t, public io_object_t {
   // String representation of endpoint to bind to
   std::string _endpoint;
 
-  rdma_listener_t(const rdma_listener_t &);
-  const rdma_listener_t &operator=(const rdma_listener_t &);
+  ib_listener_t(const ib_listener_t &);
+  const ib_listener_t &operator=(const ib_listener_t &);
 };
 }
 

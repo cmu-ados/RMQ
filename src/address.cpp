@@ -37,7 +37,7 @@
 #include "ipc_address.hpp"
 #include "tipc_address.hpp"
 #ifdef ZMQ_HAVE_RDMA
-#include "rdma_address.hpp"
+#include "ib_address.hpp"
 #endif
 
 #if defined ZMQ_HAVE_VMCI

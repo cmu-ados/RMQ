@@ -50,7 +50,7 @@
 
 #ifdef ZMQ_HAVE_RDMA
 #include <infiniband/verbs.h>
-#include "rdma.hpp"
+#include "ib.hpp"
 #endif
 
 #ifdef ZMQ_HAVE_VMCI

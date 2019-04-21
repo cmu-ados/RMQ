@@ -51,7 +51,7 @@ class mechanism_t;
 //  This engine handles any socket with SOCK_STREAM semantics,
 //  e.g. TCP socket or an UNIX domain socket.
 
-class rdma_engine_t : public io_object_t, public i_engine {
+class ib_engine_t : public io_object_t, public i_engine {
  public:
   enum error_reason_t {
     protocol_error,
@@ -59,10 +59,10 @@ class rdma_engine_t : public io_object_t, public i_engine {
     timeout_error
   };
 
-  rdma_engine_t(fd_t fd_,
+  ib_engine_t(fd_t fd_,
                 const options_t &options_,
                 const std::string &endpoint_);
-  ~rdma_engine_t();
+  ~ib_engine_t();
 
   //  i_engine interface implementation.
   void plug(zmq::io_thread_t *io_thread_, zmq::session_base_t *session_);
@@ -91,7 +91,7 @@ class rdma_engine_t : public io_object_t, public i_engine {
   int receive_greeting();
   void receive_greeting_versioned();
 
-  typedef bool (rdma_engine_t::*handshake_fun_t)();
+  typedef bool (ib_engine_t::*handshake_fun_t)();
   static handshake_fun_t select_handshake_fun(bool unversioned,
                                               unsigned char revision);
 
@@ -186,9 +186,9 @@ class rdma_engine_t : public io_object_t, public i_engine {
 
   bool _plugged;
 
-  int (rdma_engine_t::*_next_msg)(msg_t *msg_);
+  int (ib_engine_t::*_next_msg)(msg_t *msg_);
 
-  int (rdma_engine_t::*_process_msg)(msg_t *msg_);
+  int (ib_engine_t::*_process_msg)(msg_t *msg_);
 
   bool _io_error;
 
@@ -229,8 +229,8 @@ class rdma_engine_t : public io_object_t, public i_engine {
 
   std::string _peer_address;
 
-  rdma_engine_t(const rdma_engine_t &);
-  const rdma_engine_t &operator=(const rdma_engine_t &);
+  ib_engine_t(const ib_engine_t &);
+  const ib_engine_t &operator=(const ib_engine_t &);
 };
 }
 

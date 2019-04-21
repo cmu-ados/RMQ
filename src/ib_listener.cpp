@@ -33,7 +33,7 @@
 #include <string>
 #include <stdio.h>
 
-#include "rdma_listener.hpp"
+#include "ib_listener.hpp"
 #include "stream_engine.hpp"
 #include "io_thread.hpp"
 #include "session_base.hpp"
@@ -42,7 +42,7 @@
 #include "ip.hpp"
 #include "tcp.hpp"
 #include "socket_base.hpp"
-#include "rdma_engine.hpp"
+#include "ib_engine.hpp"
 
 #ifndef ZMQ_HAVE_WINDOWS
 #include <unistd.h>
@@ -61,7 +61,7 @@
 #include <ioctl.h>
 #endif
 
-zmq::rdma_listener_t::rdma_listener_t(io_thread_t *io_thread_,
+zmq::ib_listener_t::ib_listener_t(io_thread_t *io_thread_,
                                       socket_base_t *socket_,
                                       const options_t &options_) :
     own_t(io_thread_, options_),
@@ -71,25 +71,25 @@ zmq::rdma_listener_t::rdma_listener_t(io_thread_t *io_thread_,
     _socket(socket_) {
 }
 
-zmq::rdma_listener_t::~rdma_listener_t() {
+zmq::ib_listener_t::~ib_listener_t() {
   zmq_assert (_s == retired_fd);
   zmq_assert (!_handle);
 }
 
-void zmq::rdma_listener_t::process_plug() {
+void zmq::ib_listener_t::process_plug() {
   //  Start polling for incoming connections.
   _handle = add_fd(_s);
   set_pollin(_handle);
 }
 
-void zmq::rdma_listener_t::process_term(int linger_) {
+void zmq::ib_listener_t::process_term(int linger_) {
   rm_fd(_handle);
   _handle = static_cast<handle_t> (NULL);
   close();
   own_t::process_term(linger_);
 }
 
-void zmq::rdma_listener_t::in_event() {
+void zmq::ib_listener_t::in_event() {
   fd_t fd = accept();
 
   //  If connection was reset by the peer in the meantime, just ignore it.
@@ -110,7 +110,7 @@ void zmq::rdma_listener_t::in_event() {
     return;
   }
 
-  // FIXME: Should change to rdma_engine_t
+  // FIXME: Should change to ib_engine_t
   // Create the engine object for this connection.
   ibv_qp *qp = get_ctx()->create_queue_pair();
   zmq_assert (qp != nullptr);
@@ -144,8 +144,8 @@ void zmq::rdma_listener_t::in_event() {
   tcp_write(fd, "fuck!!!", sizeof("fuck!!!"));
   get_ctx()->destroy_queue_pair(qp);
 
-  rdma_engine_t *engine =
-      new(std::nothrow) rdma_engine_t(fd, options, _endpoint);
+  ib_engine_t *engine =
+      new(std::nothrow) ib_engine_t(fd, options, _endpoint);
   alloc_assert (engine);
 
   //  Choose I/O thread to run connecter in. Given that we are already
@@ -163,7 +163,7 @@ void zmq::rdma_listener_t::in_event() {
   _socket->event_accepted(_endpoint, fd);
 }
 
-void zmq::rdma_listener_t::close() {
+void zmq::ib_listener_t::close() {
   zmq_assert (_s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
   int rc = closesocket (_s);
@@ -176,7 +176,7 @@ void zmq::rdma_listener_t::close() {
   _s = retired_fd;
 }
 
-int zmq::rdma_listener_t::get_address(std::string &addr_) {
+int zmq::ib_listener_t::get_address(std::string &addr_) {
   // Get the details of the TCP socket
   struct sockaddr_storage ss;
 #if defined ZMQ_HAVE_HPUX || defined ZMQ_HAVE_VXWORKS
@@ -191,11 +191,11 @@ int zmq::rdma_listener_t::get_address(std::string &addr_) {
     return rc;
   }
 
-  rdma_address_t addr(reinterpret_cast<struct sockaddr *> (&ss), sl);
+  ib_address_t addr(reinterpret_cast<struct sockaddr *> (&ss), sl);
   return addr.to_string(addr_);
 }
 
-int zmq::rdma_listener_t::set_address(const char *addr_) {
+int zmq::ib_listener_t::set_address(const char *addr_) {
   //  Convert the textual address into address structure.
   int rc = _address.resolve(addr_, true, options.ipv6);
   if (rc != 0)
@@ -302,7 +302,7 @@ int zmq::rdma_listener_t::set_address(const char *addr_) {
   return -1;
 }
 
-zmq::fd_t zmq::rdma_listener_t::accept() {
+zmq::fd_t zmq::ib_listener_t::accept() {
   //  The situation where connection cannot be accepted due to insufficient
   //  resources is considered valid and treated by ignoring the connection.
   //  Accept one connection and deal with different failure modes.

@@ -40,7 +40,7 @@
 #include <new>
 #include <sstream>
 
-#include "rdma_engine.hpp"
+#include "ib_engine.hpp"
 #include "io_thread.hpp"
 #include "session_base.hpp"
 #include "v1_encoder.hpp"
@@ -63,7 +63,7 @@
 #include "likely.hpp"
 #include "wire.hpp"
 
-zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
+zmq::ib_engine_t::ib_engine_t(fd_t fd_,
                                   const options_t &options_,
                                   const std::string &endpoint_) :
     _s(fd_),
@@ -82,8 +82,8 @@ zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
     _options(options_),
     _endpoint(endpoint_),
     _plugged(false),
-    _next_msg(&rdma_engine_t::routing_id_msg),
-    _process_msg(&rdma_engine_t::process_routing_id_msg),
+    _next_msg(&ib_engine_t::routing_id_msg),
+    _process_msg(&ib_engine_t::process_routing_id_msg),
     _io_error(false),
     _subscription_required(false),
     _mechanism(NULL),
@@ -139,7 +139,7 @@ zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
   }
 }
 
-zmq::rdma_engine_t::~rdma_engine_t() {
+zmq::ib_engine_t::~ib_engine_t() {
   zmq_assert (!_plugged);
 
   if (_s != retired_fd) {
@@ -175,7 +175,7 @@ zmq::rdma_engine_t::~rdma_engine_t() {
   LIBZMQ_DELETE (_mechanism);
 }
 
-void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
+void zmq::ib_engine_t::plug(io_thread_t *io_thread_,
                               session_base_t *session_) {
   zmq_assert (!_plugged);
   _plugged = true;
@@ -202,8 +202,8 @@ void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
     // disable handshaking for raw socket
     _handshaking = false;
 
-    _next_msg = &rdma_engine_t::pull_msg_from_session;
-    _process_msg = &rdma_engine_t::push_raw_msg_to_session;
+    _next_msg = &ib_engine_t::pull_msg_from_session;
+    _process_msg = &ib_engine_t::push_raw_msg_to_session;
 
     properties_t properties;
     if (init_properties(properties)) {
@@ -241,7 +241,7 @@ void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
   in_event();
 }
 
-void zmq::rdma_engine_t::unplug() {
+void zmq::ib_engine_t::unplug() {
   zmq_assert (_plugged);
   _plugged = false;
 
@@ -275,12 +275,12 @@ void zmq::rdma_engine_t::unplug() {
   _session = NULL;
 }
 
-void zmq::rdma_engine_t::terminate() {
+void zmq::ib_engine_t::terminate() {
   unplug();
   delete this;
 }
 
-void zmq::rdma_engine_t::in_event() {
+void zmq::ib_engine_t::in_event() {
   zmq_assert (!_io_error);
 
   //  If still handshaking, receive and process the greeting message.
@@ -355,7 +355,7 @@ void zmq::rdma_engine_t::in_event() {
   _session->flush();
 }
 
-void zmq::rdma_engine_t::out_event() {
+void zmq::ib_engine_t::out_event() {
   zmq_assert (!_io_error);
 
   //  If write buffer is empty, try to read new data from the encoder.
@@ -416,7 +416,7 @@ void zmq::rdma_engine_t::out_event() {
       reset_pollout(_handle);
 }
 
-void zmq::rdma_engine_t::restart_output() {
+void zmq::ib_engine_t::restart_output() {
   if (unlikely (_io_error))
     return;
 
@@ -432,7 +432,7 @@ void zmq::rdma_engine_t::restart_output() {
   out_event();
 }
 
-bool zmq::rdma_engine_t::restart_input() {
+bool zmq::ib_engine_t::restart_input() {
   zmq_assert (_input_stopped);
   zmq_assert (_session != NULL);
   zmq_assert (_decoder != NULL);
@@ -484,7 +484,7 @@ bool zmq::rdma_engine_t::restart_input() {
 //  Position of the revision field in the greeting.
 const size_t revision_pos = 10;
 
-bool zmq::rdma_engine_t::handshake() {
+bool zmq::ib_engine_t::handshake() {
   zmq_assert (_handshaking);
   zmq_assert (_greeting_bytes_read < _greeting_size);
   //  Receive the greeting.
@@ -514,7 +514,7 @@ bool zmq::rdma_engine_t::handshake() {
   return true;
 }
 
-int zmq::rdma_engine_t::receive_greeting() {
+int zmq::ib_engine_t::receive_greeting() {
   bool unversioned = false;
   while (_greeting_bytes_read < _greeting_size) {
     const int n = tcp_read(_s, _greeting_recv + _greeting_bytes_read,
@@ -558,7 +558,7 @@ int zmq::rdma_engine_t::receive_greeting() {
   return unversioned ? 1 : 0;
 }
 
-void zmq::rdma_engine_t::receive_greeting_versioned() {
+void zmq::ib_engine_t::receive_greeting_versioned() {
   //  Send the major version number.
   if (_outpos + _outsize == _greeting_send + signature_size) {
     if (_outsize == 0)
@@ -601,21 +601,21 @@ void zmq::rdma_engine_t::receive_greeting_versioned() {
   }
 }
 
-zmq::rdma_engine_t::handshake_fun_t
-zmq::rdma_engine_t::select_handshake_fun(bool unversioned,
+zmq::ib_engine_t::handshake_fun_t
+zmq::ib_engine_t::select_handshake_fun(bool unversioned,
                                          unsigned char revision) {
   //  Is the peer using ZMTP/1.0 with no revision number?
   if (unversioned) {
-    return &rdma_engine_t::handshake_v1_0_unversioned;
+    return &ib_engine_t::handshake_v1_0_unversioned;
   }
   switch (revision) {
-    case ZMTP_1_0:return &rdma_engine_t::handshake_v1_0;
-    case ZMTP_2_0:return &rdma_engine_t::handshake_v2_0;
-    default:return &rdma_engine_t::handshake_v3_0;
+    case ZMTP_1_0:return &ib_engine_t::handshake_v1_0;
+    case ZMTP_2_0:return &ib_engine_t::handshake_v2_0;
+    default:return &ib_engine_t::handshake_v3_0;
   }
 }
 
-bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
+bool zmq::ib_engine_t::handshake_v1_0_unversioned() {
   //  We send and receive rest of routing id message
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
@@ -659,15 +659,15 @@ bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
 
   //  We are sending our routing id now and the next message
   //  will come from the socket.
-  _next_msg = &rdma_engine_t::pull_msg_from_session;
+  _next_msg = &ib_engine_t::pull_msg_from_session;
 
   //  We are expecting routing id message.
-  _process_msg = &rdma_engine_t::process_routing_id_msg;
+  _process_msg = &ib_engine_t::process_routing_id_msg;
 
   return true;
 }
 
-bool zmq::rdma_engine_t::handshake_v1_0() {
+bool zmq::ib_engine_t::handshake_v1_0() {
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
     error(protocol_error);
@@ -684,7 +684,7 @@ bool zmq::rdma_engine_t::handshake_v1_0() {
   return true;
 }
 
-bool zmq::rdma_engine_t::handshake_v2_0() {
+bool zmq::ib_engine_t::handshake_v2_0() {
   if (_session->zap_enabled()) {
     // reject ZMTP 2.0 connections if ZAP is enabled
     error(protocol_error);
@@ -701,7 +701,7 @@ bool zmq::rdma_engine_t::handshake_v2_0() {
   return true;
 }
 
-bool zmq::rdma_engine_t::handshake_v3_0() {
+bool zmq::ib_engine_t::handshake_v3_0() {
   _encoder = new(std::nothrow) v2_encoder_t(out_batch_size);
   alloc_assert (_encoder);
 
@@ -761,22 +761,22 @@ bool zmq::rdma_engine_t::handshake_v3_0() {
     error(protocol_error);
     return false;
   }
-  _next_msg = &rdma_engine_t::next_handshake_command;
-  _process_msg = &rdma_engine_t::process_handshake_command;
+  _next_msg = &ib_engine_t::next_handshake_command;
+  _process_msg = &ib_engine_t::process_handshake_command;
 
   return true;
 }
 
-int zmq::rdma_engine_t::routing_id_msg(msg_t *msg_) {
+int zmq::ib_engine_t::routing_id_msg(msg_t *msg_) {
   int rc = msg_->init_size(_options.routing_id_size);
   errno_assert (rc == 0);
   if (_options.routing_id_size > 0)
     memcpy(msg_->data(), _options.routing_id, _options.routing_id_size);
-  _next_msg = &rdma_engine_t::pull_msg_from_session;
+  _next_msg = &ib_engine_t::pull_msg_from_session;
   return 0;
 }
 
-int zmq::rdma_engine_t::process_routing_id_msg(msg_t *msg_) {
+int zmq::ib_engine_t::process_routing_id_msg(msg_t *msg_) {
   if (_options.recv_routing_id) {
     msg_->set_flags(msg_t::routing_id);
     int rc = _session->push_msg(msg_);
@@ -800,12 +800,12 @@ int zmq::rdma_engine_t::process_routing_id_msg(msg_t *msg_) {
     errno_assert (rc == 0);
   }
 
-  _process_msg = &rdma_engine_t::push_msg_to_session;
+  _process_msg = &ib_engine_t::push_msg_to_session;
 
   return 0;
 }
 
-int zmq::rdma_engine_t::next_handshake_command(msg_t *msg_) {
+int zmq::ib_engine_t::next_handshake_command(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
 
   if (_mechanism->status() == mechanism_t::ready) {
@@ -825,7 +825,7 @@ int zmq::rdma_engine_t::next_handshake_command(msg_t *msg_) {
   }
 }
 
-int zmq::rdma_engine_t::process_handshake_command(msg_t *msg_) {
+int zmq::ib_engine_t::process_handshake_command(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
   const int rc = _mechanism->process_handshake_command(msg_);
   if (rc == 0) {
@@ -842,7 +842,7 @@ int zmq::rdma_engine_t::process_handshake_command(msg_t *msg_) {
   return rc;
 }
 
-void zmq::rdma_engine_t::zap_msg_available() {
+void zmq::ib_engine_t::zap_msg_available() {
   zmq_assert (_mechanism != NULL);
 
   const int rc = _mechanism->zap_msg_available();
@@ -857,11 +857,11 @@ void zmq::rdma_engine_t::zap_msg_available() {
     restart_output();
 }
 
-const char *zmq::rdma_engine_t::get_endpoint() const {
+const char *zmq::ib_engine_t::get_endpoint() const {
   return _endpoint.c_str();
 }
 
-void zmq::rdma_engine_t::mechanism_ready() {
+void zmq::ib_engine_t::mechanism_ready() {
   if (_options.heartbeat_interval > 0) {
     add_timer(_options.heartbeat_interval, heartbeat_ivl_timer_id);
     _has_heartbeat_timer = true;
@@ -900,8 +900,8 @@ void zmq::rdma_engine_t::mechanism_ready() {
   if (flush_session)
     _session->flush();
 
-  _next_msg = &rdma_engine_t::pull_and_encode;
-  _process_msg = &rdma_engine_t::write_credential;
+  _next_msg = &ib_engine_t::pull_and_encode;
+  _process_msg = &ib_engine_t::write_credential;
 
   //  Compile metadata.
   properties_t properties;
@@ -924,21 +924,21 @@ void zmq::rdma_engine_t::mechanism_ready() {
   _socket->event_handshake_succeeded(_endpoint, 0);
 }
 
-int zmq::rdma_engine_t::pull_msg_from_session(msg_t *msg_) {
+int zmq::ib_engine_t::pull_msg_from_session(msg_t *msg_) {
   return _session->pull_msg(msg_);
 }
 
-int zmq::rdma_engine_t::push_msg_to_session(msg_t *msg_) {
+int zmq::ib_engine_t::push_msg_to_session(msg_t *msg_) {
   return _session->push_msg(msg_);
 }
 
-int zmq::rdma_engine_t::push_raw_msg_to_session(msg_t *msg_) {
+int zmq::ib_engine_t::push_raw_msg_to_session(msg_t *msg_) {
   if (_metadata && _metadata != msg_->metadata())
     msg_->set_metadata(_metadata);
   return push_msg_to_session(msg_);
 }
 
-int zmq::rdma_engine_t::write_credential(msg_t *msg_) {
+int zmq::ib_engine_t::write_credential(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
   zmq_assert (_session != NULL);
 
@@ -956,11 +956,11 @@ int zmq::rdma_engine_t::write_credential(msg_t *msg_) {
       return -1;
     }
   }
-  _process_msg = &rdma_engine_t::decode_and_push;
+  _process_msg = &ib_engine_t::decode_and_push;
   return decode_and_push(msg_);
 }
 
-int zmq::rdma_engine_t::pull_and_encode(msg_t *msg_) {
+int zmq::ib_engine_t::pull_and_encode(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
 
   if (_session->pull_msg(msg_) == -1)
@@ -970,7 +970,7 @@ int zmq::rdma_engine_t::pull_and_encode(msg_t *msg_) {
   return 0;
 }
 
-int zmq::rdma_engine_t::decode_and_push(msg_t *msg_) {
+int zmq::ib_engine_t::decode_and_push(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
 
   if (_mechanism->decode(msg_) == -1)
@@ -994,20 +994,20 @@ int zmq::rdma_engine_t::decode_and_push(msg_t *msg_) {
     msg_->set_metadata(_metadata);
   if (_session->push_msg(msg_) == -1) {
     if (errno == EAGAIN)
-      _process_msg = &rdma_engine_t::push_one_then_decode_and_push;
+      _process_msg = &ib_engine_t::push_one_then_decode_and_push;
     return -1;
   }
   return 0;
 }
 
-int zmq::rdma_engine_t::push_one_then_decode_and_push(msg_t *msg_) {
+int zmq::ib_engine_t::push_one_then_decode_and_push(msg_t *msg_) {
   const int rc = _session->push_msg(msg_);
   if (rc == 0)
-    _process_msg = &rdma_engine_t::decode_and_push;
+    _process_msg = &ib_engine_t::decode_and_push;
   return rc;
 }
 
-void zmq::rdma_engine_t::error(error_reason_t reason_) {
+void zmq::ib_engine_t::error(error_reason_t reason_) {
   if (_options.raw_socket && _options.raw_notify) {
     //  For raw sockets, send a final 0-length message to the application
     //  so that it knows the peer has been disconnected.
@@ -1044,7 +1044,7 @@ void zmq::rdma_engine_t::error(error_reason_t reason_) {
   delete this;
 }
 
-void zmq::rdma_engine_t::set_handshake_timer() {
+void zmq::ib_engine_t::set_handshake_timer() {
   zmq_assert (!_has_handshake_timer);
 
   if (!_options.raw_socket && _options.handshake_ivl > 0) {
@@ -1053,7 +1053,7 @@ void zmq::rdma_engine_t::set_handshake_timer() {
   }
 }
 
-bool zmq::rdma_engine_t::init_properties(properties_t &properties_) {
+bool zmq::ib_engine_t::init_properties(properties_t &properties_) {
   if (_peer_address.empty())
     return false;
   properties_.ZMQ_MAP_INSERT_OR_EMPLACE (
@@ -1068,13 +1068,13 @@ bool zmq::rdma_engine_t::init_properties(properties_t &properties_) {
   return true;
 }
 
-void zmq::rdma_engine_t::timer_event(int id_) {
+void zmq::ib_engine_t::timer_event(int id_) {
   if (id_ == handshake_timer_id) {
     _has_handshake_timer = false;
     //  handshake timer expired before handshake completed, so engine fail
     error(timeout_error);
   } else if (id_ == heartbeat_ivl_timer_id) {
-    _next_msg = &rdma_engine_t::produce_ping_message;
+    _next_msg = &ib_engine_t::produce_ping_message;
     out_event();
     add_timer(_options.heartbeat_interval, heartbeat_ivl_timer_id);
   } else if (id_ == heartbeat_ttl_timer_id) {
@@ -1088,7 +1088,7 @@ void zmq::rdma_engine_t::timer_event(int id_) {
     assert (false);
 }
 
-int zmq::rdma_engine_t::produce_ping_message(msg_t *msg_) {
+int zmq::ib_engine_t::produce_ping_message(msg_t *msg_) {
   // 16-bit TTL + \4PING == 7
   const size_t ping_ttl_len = msg_t::ping_cmd_name_size + 2;
   zmq_assert (_mechanism != NULL);
@@ -1104,7 +1104,7 @@ int zmq::rdma_engine_t::produce_ping_message(msg_t *msg_) {
          &ttl_val, sizeof(ttl_val));
 
   rc = _mechanism->encode(msg_);
-  _next_msg = &rdma_engine_t::pull_and_encode;
+  _next_msg = &ib_engine_t::pull_and_encode;
   if (!_has_timeout_timer && _heartbeat_timeout > 0) {
     add_timer(_heartbeat_timeout, heartbeat_timeout_timer_id);
     _has_timeout_timer = true;
@@ -1112,18 +1112,18 @@ int zmq::rdma_engine_t::produce_ping_message(msg_t *msg_) {
   return rc;
 }
 
-int zmq::rdma_engine_t::produce_pong_message(msg_t *msg_) {
+int zmq::ib_engine_t::produce_pong_message(msg_t *msg_) {
   zmq_assert (_mechanism != NULL);
 
   int rc = msg_->move(_pong_msg);
   errno_assert (rc == 0);
 
   rc = _mechanism->encode(msg_);
-  _next_msg = &rdma_engine_t::pull_and_encode;
+  _next_msg = &ib_engine_t::pull_and_encode;
   return rc;
 }
 
-int zmq::rdma_engine_t::process_heartbeat_message(msg_t *msg_) {
+int zmq::ib_engine_t::process_heartbeat_message(msg_t *msg_) {
   if (msg_->is_ping()) {
     // 16-bit TTL + \4PING == 7
     const size_t ping_ttl_len = msg_t::ping_cmd_name_size + 2;
@@ -1163,14 +1163,14 @@ int zmq::rdma_engine_t::process_heartbeat_message(msg_t *msg_) {
              static_cast<uint8_t *> (msg_->data()) + ping_ttl_len,
              context_len);
 
-    _next_msg = &rdma_engine_t::produce_pong_message;
+    _next_msg = &ib_engine_t::produce_pong_message;
     out_event();
   }
 
   return 0;
 }
 
-int zmq::rdma_engine_t::process_command_message(msg_t *msg_) {
+int zmq::ib_engine_t::process_command_message(msg_t *msg_) {
   const uint8_t cmd_name_size =
       *(static_cast<const uint8_t *> (msg_->data()));
   const size_t ping_name_size = msg_t::ping_cmd_name_size - 1;

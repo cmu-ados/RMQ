@@ -44,7 +44,7 @@
 #include "atomic_counter.hpp"
 #include "thread.hpp"
 #ifdef ZMQ_HAVE_RDMA
-#include "rdma.hpp"
+#include "ib.hpp"
 #endif
 
 namespace zmq {

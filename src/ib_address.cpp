@@ -32,7 +32,7 @@
 #include <sstream>
 
 #include "macros.hpp"
-#include "rdma_address.hpp"
+#include "ib_address.hpp"
 #include "stdint.hpp"
 #include "err.hpp"
 #include "ip.hpp"
@@ -50,12 +50,12 @@
 
 #include <limits.h>
 
-zmq::rdma_address_t::rdma_address_t() : _has_src_addr(false) {
+zmq::ib_address_t::ib_address_t() : _has_src_addr(false) {
   memset(&_address, 0, sizeof(_address));
   memset(&_source_address, 0, sizeof(_source_address));
 }
 
-zmq::rdma_address_t::rdma_address_t(const sockaddr *sa_, socklen_t sa_len_) :
+zmq::ib_address_t::ib_address_t(const sockaddr *sa_, socklen_t sa_len_) :
     _has_src_addr(false) {
   zmq_assert (sa_ && sa_len_ > 0);
 
@@ -69,7 +69,7 @@ zmq::rdma_address_t::rdma_address_t(const sockaddr *sa_, socklen_t sa_len_) :
     memcpy(&_address.ipv6, sa_, sizeof(_address.ipv6));
 }
 
-int zmq::rdma_address_t::resolve(const char *name_, bool local_, bool ipv6_) {
+int zmq::ib_address_t::resolve(const char *name_, bool local_, bool ipv6_) {
   // Test the ';' to know if we have a source address in name_
   const char *src_delimiter = strrchr(name_, ';');
   if (src_delimiter) {
@@ -110,7 +110,7 @@ int zmq::rdma_address_t::resolve(const char *name_, bool local_, bool ipv6_) {
   return resolver.resolve(&_address, name_);
 }
 
-int zmq::rdma_address_t::to_string(std::string &addr_) const {
+int zmq::ib_address_t::to_string(std::string &addr_) const {
   if (_address.family() != AF_INET && _address.family() != AF_INET6) {
     addr_.clear();
     return -1;
@@ -138,30 +138,30 @@ int zmq::rdma_address_t::to_string(std::string &addr_) const {
   return 0;
 }
 
-const sockaddr *zmq::rdma_address_t::addr() const {
+const sockaddr *zmq::ib_address_t::addr() const {
   return _address.as_sockaddr();
 }
 
-socklen_t zmq::rdma_address_t::addrlen() const {
+socklen_t zmq::ib_address_t::addrlen() const {
   return _address.sockaddr_len();
 }
 
-const sockaddr *zmq::rdma_address_t::src_addr() const {
+const sockaddr *zmq::ib_address_t::src_addr() const {
   return _source_address.as_sockaddr();
 }
 
-socklen_t zmq::rdma_address_t::src_addrlen() const {
+socklen_t zmq::ib_address_t::src_addrlen() const {
   return _source_address.sockaddr_len();
 }
 
-bool zmq::rdma_address_t::has_src_addr() const {
+bool zmq::ib_address_t::has_src_addr() const {
   return _has_src_addr;
 }
 
 #if defined ZMQ_HAVE_WINDOWS
 unsigned short zmq::tcp_address_t::family () const
 #else
-sa_family_t zmq::rdma_address_t::family() const
+sa_family_t zmq::ib_address_t::family() const
 #endif
 {
   return _address.family();
