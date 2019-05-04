@@ -114,6 +114,7 @@ void zmq::rdma_listener_t::in_event() {
   // Create the engine object for this connection.
   ibv_qp *qp = get_ctx()->create_queue_pair();
   zmq_assert (qp != nullptr);
+  ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
 
   qp_info_t local_qp_info, remote_qp_info;
 
@@ -137,12 +138,24 @@ void zmq::rdma_listener_t::in_event() {
          remote_qp_info.lid,
          remote_qp_info.qp_num);
 
-  char buf[300] = {0};
-  tcp_read(fd, buf, sizeof("shit!!!"));
-  printf("RDMA LISTENER: recv: %s\n", buf);
+  int ret = set_qp_to_rts(qp,
+                          remote_qp_info.qp_num,
+                          remote_qp_info.lid);
+  printf("\tqp[%d] <-> qp[%d]\n",
+         qp->qp_num, remote_qp_info.qp_num);
 
-  tcp_write(fd, "fuck!!!", sizeof("fuck!!!"));
-  get_ctx()->destroy_queue_pair(qp);
+  char buf[300] = {0};
+
+  tcp_read(fd, buf, sizeof("TCP sync"));
+  tcp_write(fd, "TCP ack", sizeof("TCP ack"));
+
+  printf("RDMA LISTENER: RDMA connected\n");
+
+  struct ibv_port_attr port_attr;
+  rc = ibv_query_port(ctx, IB_PORT, &port_attr);
+  assert(port_attr.state == IBV_PORT_ACTIVE);
+
+  //get_ctx()->destroy_queue_pair(qp);
 
   rdma_engine_t *engine =
       new(std::nothrow) rdma_engine_t(fd, options, _endpoint);

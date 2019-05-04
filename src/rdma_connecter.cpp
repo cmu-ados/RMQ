@@ -147,8 +147,9 @@ void zmq::rdma_connecter_t::out_event() {
     add_reconnect_timer();
     return;
   }
-
   ibv_qp *qp = get_ctx()->create_queue_pair();
+  ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
+
   zmq_assert (qp != nullptr);
   qp_info_t local_qp_info, remote_qp_info;
 
@@ -161,26 +162,34 @@ void zmq::rdma_connecter_t::out_event() {
   n1 = get_qp_info(fd, &remote_qp_info);
   zmq_assert(n1 == 0);
 
-  printf("RDMA CONNECTOR: send: (%d, %d) %d %d\n",
+  printf("IB CONNECTOR: send: (%d, %d) %d %d\n",
          n1,
          n2,
          local_qp_info.lid,
          local_qp_info.qp_num);
-  printf("RDMA CONNECTOR: recv: (%d, %d) %d %d\n",
+  printf("IB CONNECTOR: recv: (%d, %d) %d %d\n",
          n1,
          n2,
          remote_qp_info.lid,
          remote_qp_info.qp_num);
 
-  int n = tcp_write(fd, "shit!!!", sizeof("shit!!!"));
-  zmq_assert(n == sizeof("shit!!!"));
+  int ret = set_qp_to_rts(qp,
+                          remote_qp_info.qp_num,
+                          remote_qp_info.lid);
+  assert(ret == 0);
+  printf("\tqp[%d] <-> qp[%d]\n", qp->qp_num, remote_qp_info.qp_num);
 
   char buf[300] = {0};
-  n = tcp_read(fd, buf, sizeof("fuck!!!"));
-  zmq_assert(n == sizeof("fuck!!!"));
+  tcp_write(fd, "TCP sync", sizeof("TCP sync"));
+  tcp_read(fd, buf, sizeof("TCP ack"));
 
-  printf("RDMA CONNECTOR: recv: %s\n", buf);
-  get_ctx()->destroy_queue_pair(qp);
+  printf("RDMA CONNECTOR: RDMA Connected\n", buf);
+
+  struct ibv_port_attr port_attr;
+  int rc = ibv_query_port(ctx, IB_PORT, &port_attr);
+  assert(port_attr.state == IBV_PORT_ACTIVE);
+
+  // get_ctx()->destroy_queue_pair(qp);
 
 
   //  Create the engine object for this connection.

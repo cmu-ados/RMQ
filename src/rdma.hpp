@@ -20,6 +20,29 @@ static inline uint64_t ntohll (uint64_t x) {return x; }
 #error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
 #endif
 
+#define IB_PORT 1
+#define IB_MTU  IBV_MTU_4096
+#define IB_SL 0
+
+class qp_info_t {
+public:
+    uint16_t lid;
+    uint32_t qp_num;
+};
+
+int get_qp_info(int fd, qp_info_t *qp_info);
+
+int set_qp_info(int fd, qp_info_t *qp_info);
+
+int set_qp_to_rts(ibv_qp *qp, uint32_t target_qp_num, uint16_t target_lid);
+
+int post_send(uint32_t req_size, uint32_t lkey, uint64_t wr_id,
+        struct ibv_qp *qp, char *buf);
+
+int post_srq_recv(uint32_t req_size, uint32_t lkey, uint64_t wr_id,
+        struct ibv_srq *srq, char *buf);
+
+
 // structure for IB resources
 class ib_res_t {
  public:
@@ -34,6 +57,8 @@ class ib_res_t {
   int _num_qps;
   char *_ib_buf;
   size_t _ib_buf_size;
+  char *_rcv_buf_base;
+  int _rcv_buf_offset;
 
   //  List of unused thread queue pairs
   typedef std::vector<ibv_qp *> unused_qps_t;
@@ -51,9 +76,27 @@ class ib_res_t {
         _num_qps(0),
         _ib_buf(nullptr),
         _ib_buf_size(0),
+        _rcv_buf_base(nullptr),
+        _rcv_buf_offset(0),
         _initalized(false) {
     memset(&_port_attr, 0, sizeof(ibv_port_attr));
     memset(&_dev_attr, 0, sizeof(ibv_device_attr));
+  }
+
+  // Could be race here, should made send/recv critical section
+  // Here buffer must owned by the qp
+  int ib_post_send(struct ibv_qp *qp, char *buf, uint32_t size) {
+    // Here wr_id is set to 0, change if needed
+    post_send(size, _mr->lkey, 0, qp, buf);
+  }
+
+
+  int ib_post_recv(uint32_t *buf, uint32_t size) {
+    post_srq_recv(size, _mr->lkey, 0, _srq,
+            _rcv_buf_base + _rcv_buf_offset);
+    if (_rcv_buf_offset + size >= (_ib_buf_size / 2))
+      _rcv_buf_offset = 0;
+    else _rcv_buf_offset += size;
   }
 
   ibv_qp *create_qp() {
@@ -98,11 +141,12 @@ class ib_res_t {
     _pd = ibv_alloc_pd(_ctx);
     zmq_assert(_pd != nullptr);
 
-    int ret = ibv_query_port(_ctx, 1, &_port_attr);
+    int ret = ibv_query_port(_ctx, IB_PORT, &_port_attr);
     zmq_assert(ret == 0);
 
     _ib_buf_size = buf_size;
     posix_memalign((void **) (&_ib_buf), 4096, _ib_buf_size);
+    _rcv_buf_base = _ib_buf + (_ib_buf_size / 2);
     zmq_assert(_ib_buf != nullptr);
 
     _mr = ibv_reg_mr(_pd, (void *) _ib_buf,
@@ -183,35 +227,6 @@ class ib_res_t {
   }
 
 };
-
-class qp_info_t {
- public:
-  uint16_t lid;
-  uint32_t qp_num;
-};
-
-/**
- *
- * @param fd
- * @param qp_info
- * @return
- */
-int get_qp_info(int fd, qp_info_t *qp_info);
-/**
- *
- * @param fd
- * @param qp_info
- * @return
- */
-int set_qp_info(int fd, qp_info_t *qp_info);
-/**
- *
- * @param qp
- * @param target_qp_num
- * @param target_lid
- * @return
- */
-int set_qp_to_rts (ibv_qp *qp, uint32_t target_qp_num, uint16_t target_lid);
 
 }
 
