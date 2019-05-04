@@ -18,6 +18,7 @@ namespace zmq {
       int n;
       qp_info_t qp_info_buf;
       qp_info_buf.lid = htons(qp_info->lid);
+      qp_info_buf.qp_num = htonl(qp_info->qp_num);
       n = tcp_write(fd, (char *) &qp_info_buf, sizeof(qp_info_t));
       if (n != sizeof(qp_info_t)) {
         return -1;
