@@ -692,7 +692,7 @@ ibv_qp* zmq::ctx_t::get_qp(int qp_id) {
     return _ib_res.get_qp(qp_id);
 }
 
-const zmq::ib_res_t &zmq::ctx_t::get_ib_res() {
+zmq::ib_res_t &zmq::ctx_t::get_ib_res() {
   return _ib_res;
 }
 #endif

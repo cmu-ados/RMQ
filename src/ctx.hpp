@@ -144,7 +144,7 @@ class ctx_t : public thread_ctx_t {
   int create_queue_pair();
   void destroy_queue_pair(int qp_id);
   ibv_qp* get_qp(int qp_id);
-  const zmq::ib_res_t &get_ib_res();
+  zmq::ib_res_t &get_ib_res();
 #endif
 
 #ifdef ZMQ_HAVE_VMCI

@@ -146,6 +146,10 @@ void zmq::rdma_listener_t::in_event() {
 
   char buf[300] = {0};
 
+  // FIXME: Test connection, delete it when finished
+  char rdma_msg[300] = {0};
+  get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
+
   tcp_read(fd, buf, sizeof("TCP sync"));
   tcp_write(fd, "TCP ack", sizeof("TCP ack"));
 
@@ -154,6 +158,13 @@ void zmq::rdma_listener_t::in_event() {
   struct ibv_port_attr port_attr;
   rc = ibv_query_port(ctx, IB_PORT, &port_attr);
   assert(port_attr.state == IBV_PORT_ACTIVE);
+
+  // FIXME: Test connection, delete it when finished
+  char * rcv_buf[1] = {nullptr};
+  uint32_t length[1] = {0};
+  get_ctx()->get_ib_res().ib_poll_n(1, rcv_buf, length);
+  printf("RDMA LISTENER: Message received %s\n", rcv_buf[0]);
+
 
   //get_ctx()->destroy_queue_pair(qp);
 

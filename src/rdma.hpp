@@ -23,6 +23,7 @@ static inline uint64_t ntohll (uint64_t x) {return x; }
 #define IB_PORT 1
 #define IB_MTU  IBV_MTU_4096
 #define IB_SL 0
+#define IB_RECV_NUM 256
 
 class qp_info_t {
 public:
@@ -90,21 +91,52 @@ class ib_res_t {
     memset(&_dev_attr, 0, sizeof(ibv_device_attr));
   }
 
+  char * ib_reserve_send(int qp_id, int size) {
+    if (_send_buf_offset[qp_id] + size >= (_ib_buf_size / 2 / _num_qps))
+      _send_buf_offset[qp_id] = size;
+    else _send_buf_offset[qp_id] += size;
+    return _send_buf_base[qp_id] + _send_buf_offset[qp_id] - size;
+  }
+
   // Could be race here, should made send/recv critical section
   // Here buffer must owned by the qp
   int ib_post_send(int qp_id, char *buf, uint32_t size) {
     ibv_qp * qp = get_qp(qp_id);
     // Here wr_id is set to 0, change if needed
-    post_send(size, _mr->lkey, 0, qp, buf);
+    post_send(size, _mr->lkey, (uint64_t)buf, qp, buf);
   }
 
 
-  int ib_post_recv(uint32_t *buf, uint32_t size) {
-    post_srq_recv(size, _mr->lkey, 0, _srq,
-            _rcv_buf_base + _rcv_buf_offset);
+  int ib_post_recv(uint32_t size) {
+    assert(_rcv_buf_base != nullptr);
+    char * buf_pos = _rcv_buf_base + _rcv_buf_offset;
+    printf("1 Recv posted at %u \n", (uint64_t)buf_pos);
+    post_srq_recv(size, _mr->lkey, (uint64_t)buf_pos, _srq,
+                  buf_pos);
     if (_rcv_buf_offset + size >= (_ib_buf_size / 2))
       _rcv_buf_offset = 0;
     else _rcv_buf_offset += size;
+  }
+
+  void ib_poll_n(int n, char ** recv_bufs, uint32_t * length) {
+    int remind_n = n;
+    int buf_index = 0;
+    ibv_cq * cq = _cq;
+    struct ibv_wc wcs[IB_RECV_NUM];
+    while (remind_n > 0) {
+      int num_wc = remind_n;
+      int n_got = ibv_poll_cq(cq, num_wc, wcs);
+      for (int i = 0; i < n_got; i++) {
+        if (wcs[i].status == IBV_WC_SUCCESS && wcs[i].opcode == IBV_WC_RECV) {
+          recv_bufs[buf_index] = (char*)wcs[i].wr_id;
+          length[buf_index] = wcs[i].byte_len;
+          remind_n--;
+          buf_index++;
+          printf("1 Recv to %u completed\n", (unsigned)wcs[i].wr_id);
+        }
+        else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
+      }
+    }
   }
 
   int create_qp() {
@@ -122,12 +154,7 @@ class ib_res_t {
     return _qp[qp_id];
   }
 
-  char * ib_reserve_send(int qp_id, int size) {
-    if (_send_buf_offset[qp_id] + size >= (_ib_buf_size / 2 / _num_qps))
-      _send_buf_offset[qp_id] = size;
-    else _send_buf_offset[qp_id] += size;
-    return _send_buf_base[qp_id] + _send_buf_offset[qp_id] - size;
-  }
+
 
   void destroy_qp(int qp_id) {
     scoped_lock_t get_ib_sync(_ib_sync);

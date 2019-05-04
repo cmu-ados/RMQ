@@ -147,7 +147,8 @@ void zmq::rdma_connecter_t::out_event() {
     add_reconnect_timer();
     return;
   }
-  ibv_qp *qp = get_ctx()->get_qp(get_ctx()->create_queue_pair());
+  int qp_id = get_ctx()->create_queue_pair();
+  ibv_qp *qp = get_ctx()->get_qp(qp_id);
   ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
 
   zmq_assert (qp != nullptr);
@@ -189,6 +190,10 @@ void zmq::rdma_connecter_t::out_event() {
   int rc = ibv_query_port(ctx, IB_PORT, &port_attr);
   assert(port_attr.state == IBV_PORT_ACTIVE);
 
+  // FIXME: Test connection, delete it when finished
+  char * testmsg = get_ctx()->get_ib_res().ib_reserve_send(qp_id, sizeof("RDMATest"));
+  memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
+  get_ctx()->get_ib_res().ib_post_send(qp_id, testmsg, sizeof("RDMATest"));
   // get_ctx()->destroy_queue_pair(qp);
 
 

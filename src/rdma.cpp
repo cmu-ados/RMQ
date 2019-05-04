@@ -109,6 +109,7 @@ namespace zmq {
 
     int post_srq_recv(uint32_t req_size, uint32_t lkey, uint64_t wr_id,
                       struct ibv_srq *srq, char *buf) {
+
       assert(srq != nullptr);
       struct ibv_recv_wr *bad_recv_wr;
 
