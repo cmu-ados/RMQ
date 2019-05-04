@@ -678,13 +678,18 @@ void zmq::ctx_t::connect_inproc_sockets(
 
 #ifdef ZMQ_HAVE_RDMA
 
-ibv_qp *zmq::ctx_t::create_queue_pair() {
-  ibv_qp *qp = _ib_res.create_qp();
-  return qp;
+int zmq::ctx_t::create_queue_pair() {
+  int qp_id = _ib_res.create_qp();
+  return qp_id;
 }
 
-void zmq::ctx_t::destroy_queue_pair(ibv_qp *qp) {
-  _ib_res.destroy_qp(qp);
+void zmq::ctx_t::destroy_queue_pair(int qp_id) {
+  _ib_res.destroy_qp(qp_id);
+}
+
+
+ibv_qp* zmq::ctx_t::get_qp(int qp_id) {
+    return _ib_res.get_qp(qp_id);
 }
 
 const zmq::ib_res_t &zmq::ctx_t::get_ib_res() {

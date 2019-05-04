@@ -147,7 +147,7 @@ void zmq::rdma_connecter_t::out_event() {
     add_reconnect_timer();
     return;
   }
-  ibv_qp *qp = get_ctx()->create_queue_pair();
+  ibv_qp *qp = get_ctx()->get_qp(get_ctx()->create_queue_pair());
   ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
 
   zmq_assert (qp != nullptr);

@@ -141,8 +141,9 @@ class ctx_t : public thread_ctx_t {
 
   // Create and destroy a RDMA queue pair
 #ifdef ZMQ_HAVE_RDMA
-  ibv_qp *create_queue_pair();
-  void destroy_queue_pair(ibv_qp *qp);
+  int create_queue_pair();
+  void destroy_queue_pair(int qp_id);
+  ibv_qp* get_qp(int qp_id);
   const zmq::ib_res_t &get_ib_res();
 #endif
 

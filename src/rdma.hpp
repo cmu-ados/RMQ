@@ -57,11 +57,16 @@ class ib_res_t {
   int _num_qps;
   char *_ib_buf;
   size_t _ib_buf_size;
+  /* receive buffer, occupying the second half of the buffer */
   char *_rcv_buf_base;
   int _rcv_buf_offset;
+  /* send buffer, occupying the first half of the buffer */
+  char **_send_buf_base;
+  int * _send_buf_offset;
+
 
   //  List of unused thread queue pairs
-  typedef std::vector<ibv_qp *> unused_qps_t;
+  typedef std::vector<int> unused_qps_t;
   unused_qps_t _unused_qps;
 
   mutex_t _ib_sync;
@@ -78,6 +83,8 @@ class ib_res_t {
         _ib_buf_size(0),
         _rcv_buf_base(nullptr),
         _rcv_buf_offset(0),
+        _send_buf_base(nullptr),
+        _send_buf_offset(nullptr),
         _initalized(false) {
     memset(&_port_attr, 0, sizeof(ibv_port_attr));
     memset(&_dev_attr, 0, sizeof(ibv_device_attr));
@@ -85,7 +92,8 @@ class ib_res_t {
 
   // Could be race here, should made send/recv critical section
   // Here buffer must owned by the qp
-  int ib_post_send(struct ibv_qp *qp, char *buf, uint32_t size) {
+  int ib_post_send(int qp_id, char *buf, uint32_t size) {
+    ibv_qp * qp = get_qp(qp_id);
     // Here wr_id is set to 0, change if needed
     post_send(size, _mr->lkey, 0, qp, buf);
   }
@@ -99,29 +107,40 @@ class ib_res_t {
     else _rcv_buf_offset += size;
   }
 
-  ibv_qp *create_qp() {
+  int create_qp() {
     scoped_lock_t get_ib_sync(_ib_sync);
     assert(_initalized);
     if (_unused_qps.empty()) {
-      return nullptr;
+      return -1;
     }
     auto qp = _unused_qps.back();
     _unused_qps.pop_back();
     return qp;
   }
 
-  void destroy_qp(ibv_qp *qp) {
+  ibv_qp* get_qp(int qp_id) {
+    return _qp[qp_id];
+  }
+
+  char * ib_reserve_send(int qp_id, int size) {
+    if (_send_buf_offset[qp_id] + size >= (_ib_buf_size / 2 / _num_qps))
+      _send_buf_offset[qp_id] = size;
+    else _send_buf_offset[qp_id] += size;
+    return _send_buf_base[qp_id] + _send_buf_offset[qp_id] - size;
+  }
+
+  void destroy_qp(int qp_id) {
     scoped_lock_t get_ib_sync(_ib_sync);
     assert(_initalized);
     bool flag = false;
     for (int i = 0; i < _num_qps; ++i) {
-      if (_qp[i] == qp) {
+      if (_qp[i] == get_qp(qp_id)) {
         flag = true;
         break;
       }
     }
     assert(flag);
-    _unused_qps.push_back(qp);
+    _unused_qps.push_back(qp_id);
   }
 
   void setup(int num_qps, int buf_size) {
@@ -147,6 +166,16 @@ class ib_res_t {
     _ib_buf_size = buf_size;
     posix_memalign((void **) (&_ib_buf), 4096, _ib_buf_size);
     _rcv_buf_base = _ib_buf + (_ib_buf_size / 2);
+
+    _send_buf_base = (char**)malloc(_num_qps * sizeof(char*));
+    _send_buf_offset = (int*) malloc(_num_qps * sizeof(int));
+
+    int send_buf_size_per_qp = (_ib_buf_size / 2) / _num_qps;
+    for (int i = 0; i < _num_qps; i++) {
+      _send_buf_base[i] = _ib_buf + i * send_buf_size_per_qp;
+      _send_buf_offset[i] = 0;
+    }
+
     zmq_assert(_ib_buf != nullptr);
 
     _mr = ibv_reg_mr(_pd, (void *) _ib_buf,
@@ -188,7 +217,7 @@ class ib_res_t {
 
     for (int i = 0; i < _num_qps; i++) {
       _qp[i] = ibv_create_qp(_pd, &qp_init_attr);
-      _unused_qps.push_back(_qp[i]);
+      _unused_qps.push_back(i);
       zmq_assert(_qp[i] != nullptr);
     }
     ibv_free_device_list(dev_list);

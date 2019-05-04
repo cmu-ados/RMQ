@@ -112,7 +112,7 @@ void zmq::rdma_listener_t::in_event() {
 
   // FIXME: Should change to rdma_engine_t
   // Create the engine object for this connection.
-  ibv_qp *qp = get_ctx()->create_queue_pair();
+  ibv_qp *qp = get_ctx()->get_qp(get_ctx()->create_queue_pair());
   zmq_assert (qp != nullptr);
   ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
 
