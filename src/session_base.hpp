@@ -37,7 +37,7 @@
 #include "pipe.hpp"
 #include "socket_base.hpp"
 #include "stream_engine.hpp"
-#include "ib_engine.hpp"
+#include "rdma_engine.hpp"
 
 namespace zmq {
 class io_thread_t;
@@ -62,7 +62,7 @@ class session_base_t : public own_t, public io_object_t, public i_pipe_events {
   void rollback();
   void engine_error(zmq::stream_engine_t::error_reason_t reason_);
 #ifdef ZMQ_HAVE_RDMA
-  void engine_error(zmq::ib_engine_t::error_reason_t reason_);
+  void engine_error(zmq::rdma_engine_t::error_reason_t reason_);
 #endif
 
   //  i_pipe_events interface implementation.

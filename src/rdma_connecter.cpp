@@ -32,7 +32,7 @@
 #include <string>
 
 #include "macros.hpp"
-#include "ib_connecter.hpp"
+#include "rdma_connecter.hpp"
 #include "stream_engine.hpp"
 #include "io_thread.hpp"
 #include "random.hpp"
@@ -40,9 +40,9 @@
 #include "ip.hpp"
 #include "tcp.hpp"
 #include "address.hpp"
-#include "ib_address.hpp"
+#include "rdma_address.hpp"
 #include "session_base.hpp"
-#include "ib_engine.hpp"
+#include "rdma_engine.hpp"
 
 #if !defined ZMQ_HAVE_WINDOWS
 #include <unistd.h>
@@ -65,7 +65,7 @@
 #include <TargetConditionals.h>
 #endif
 
-zmq::ib_connector_t::ib_connector_t(class io_thread_t *io_thread_,
+zmq::rdma_connecter_t::rdma_connecter_t(class io_thread_t *io_thread_,
                                         class session_base_t *session_,
                                         const options_t &options_,
                                         address_t *addr_,
@@ -89,21 +89,21 @@ zmq::ib_connector_t::ib_connector_t(class io_thread_t *io_thread_,
   // initializer, and make endpoint const
 }
 
-zmq::ib_connector_t::~ib_connector_t() {
+zmq::rdma_connecter_t::~rdma_connecter_t() {
   zmq_assert (!_connect_timer_started);
   zmq_assert (!_reconnect_timer_started);
   zmq_assert (!_handle);
   zmq_assert (_s == retired_fd);
 }
 
-void zmq::ib_connector_t::process_plug() {
+void zmq::rdma_connecter_t::process_plug() {
   if (_delayed_start)
     add_reconnect_timer();
   else
     start_connecting();
 }
 
-void zmq::ib_connector_t::process_term(int linger_) {
+void zmq::rdma_connecter_t::process_term(int linger_) {
   if (_connect_timer_started) {
     cancel_timer(connect_timer_id);
     _connect_timer_started = false;
@@ -124,14 +124,14 @@ void zmq::ib_connector_t::process_term(int linger_) {
   own_t::process_term(linger_);
 }
 
-void zmq::ib_connector_t::in_event() {
+void zmq::rdma_connecter_t::in_event() {
   //  We are not polling for incoming data, so we are actually called
   //  because of error here. However, we can get error on out event as well
   //  on some platforms, so we'll simply handle both events in the same way.
   out_event();
 }
 
-void zmq::ib_connector_t::out_event() {
+void zmq::rdma_connecter_t::out_event() {
   if (_connect_timer_started) {
     cancel_timer(connect_timer_id);
     _connect_timer_started = false;
@@ -184,8 +184,8 @@ void zmq::ib_connector_t::out_event() {
 
 
   //  Create the engine object for this connection.
-  ib_engine_t *engine =
-      new(std::nothrow) ib_engine_t(fd, options, _endpoint);
+  rdma_engine_t *engine =
+      new(std::nothrow) rdma_engine_t(fd, options, _endpoint);
   alloc_assert (engine);
 
   //  Attach the engine to the corresponding session object.
@@ -197,12 +197,12 @@ void zmq::ib_connector_t::out_event() {
   _socket->event_connected(_endpoint, fd);
 }
 
-void zmq::ib_connector_t::rm_handle() {
+void zmq::rdma_connecter_t::rm_handle() {
   rm_fd(_handle);
   _handle = static_cast<handle_t> (NULL);
 }
 
-void zmq::ib_connector_t::timer_event(int id_) {
+void zmq::rdma_connecter_t::timer_event(int id_) {
   zmq_assert (id_ == reconnect_timer_id || id_ == connect_timer_id);
   if (id_ == connect_timer_id) {
     _connect_timer_started = false;
@@ -215,7 +215,7 @@ void zmq::ib_connector_t::timer_event(int id_) {
   }
 }
 
-void zmq::ib_connector_t::start_connecting() {
+void zmq::rdma_connecter_t::start_connecting() {
   //  Open the connecting socket.
   const int rc = open();
   //  Connect may succeed in synchronous manner.
@@ -242,14 +242,14 @@ void zmq::ib_connector_t::start_connecting() {
   }
 }
 
-void zmq::ib_connector_t::add_connect_timer() {
+void zmq::rdma_connecter_t::add_connect_timer() {
   if (options.connect_timeout > 0) {
     add_timer(options.connect_timeout, connect_timer_id);
     _connect_timer_started = true;
   }
 }
 
-void zmq::ib_connector_t::add_reconnect_timer() {
+void zmq::rdma_connecter_t::add_reconnect_timer() {
   if (options.reconnect_ivl != -1) {
     const int interval = get_new_reconnect_ivl();
     add_timer(interval, reconnect_timer_id);
@@ -258,7 +258,7 @@ void zmq::ib_connector_t::add_reconnect_timer() {
   }
 }
 
-int zmq::ib_connector_t::get_new_reconnect_ivl() {
+int zmq::rdma_connecter_t::get_new_reconnect_ivl() {
   //  The new interval is the current interval + random value.
   const int interval =
       _current_reconnect_ivl + generate_random() % options.reconnect_ivl;
@@ -273,7 +273,7 @@ int zmq::ib_connector_t::get_new_reconnect_ivl() {
   return interval;
 }
 
-int zmq::ib_connector_t::open() {
+int zmq::rdma_connecter_t::open() {
   zmq_assert (_s == retired_fd);
 
   //  Resolve the address
@@ -281,7 +281,7 @@ int zmq::ib_connector_t::open() {
     LIBZMQ_DELETE (_addr->resolved.rdma_addr);
   }
 
-  _addr->resolved.rdma_addr = new(std::nothrow) ib_address_t();
+  _addr->resolved.rdma_addr = new(std::nothrow) rdma_address_t();
   alloc_assert (_addr->resolved.rdma_addr);
   int rc = _addr->resolved.rdma_addr->resolve(_addr->address.c_str(), false,
                                               options.ipv6);
@@ -290,7 +290,7 @@ int zmq::ib_connector_t::open() {
     return -1;
   }
   zmq_assert (_addr->resolved.rdma_addr != NULL);
-  const ib_address_t *const rdma_addr = _addr->resolved.rdma_addr;
+  const rdma_address_t *const rdma_addr = _addr->resolved.rdma_addr;
 
   //  Create the socket.
   _s = open_socket(rdma_addr->family(), SOCK_STREAM, IPPROTO_TCP);
@@ -396,7 +396,7 @@ int zmq::ib_connector_t::open() {
   return -1;
 }
 
-zmq::fd_t zmq::ib_connector_t::connect() {
+zmq::fd_t zmq::rdma_connecter_t::connect() {
   //  Async connect has finished. Check whether an error occurred
   int err = 0;
 #if defined ZMQ_HAVE_HPUX || defined ZMQ_HAVE_VXWORKS
@@ -443,7 +443,7 @@ zmq::fd_t zmq::ib_connector_t::connect() {
   return result;
 }
 
-bool zmq::ib_connector_t::tune_socket(const fd_t fd_) {
+bool zmq::rdma_connecter_t::tune_socket(const fd_t fd_) {
   const int rc = tune_tcp_socket(fd_)
       | tune_tcp_keepalives(
           fd_, options.tcp_keepalive, options.tcp_keepalive_cnt,
@@ -452,7 +452,7 @@ bool zmq::ib_connector_t::tune_socket(const fd_t fd_) {
   return rc == 0;
 }
 
-void zmq::ib_connector_t::close() {
+void zmq::rdma_connecter_t::close() {
   zmq_assert (_s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
   const int rc = closesocket (_s);

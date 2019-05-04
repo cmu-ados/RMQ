@@ -1,5 +1,5 @@
-#ifndef __ZEROMQ_IB_HPP_INCLUDED__
-#define __ZEROMQ_IB_HPP_INCLUDED__
+#ifndef __ZEROMQ_IB_RES_HPP_INCLUDED__
+#define __ZEROMQ_IB_RES_HPP_INCLUDED__
 
 #include <cstdio>
 #include <vector>
@@ -215,4 +215,4 @@ int set_qp_to_rts (ibv_qp *qp, uint32_t target_qp_num, uint16_t target_lid);
 
 }
 
-#endif // __ZEROMQ_IB_HPP_INCLUDED__
+#endif // __ZEROMQ_IB_RES_HPP_INCLUDED__

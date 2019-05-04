@@ -96,7 +96,7 @@
 #include "gather.hpp"
 #include "scatter.hpp"
 #include "dgram.hpp"
-#include "ib_listener.hpp"
+#include "rdma_listener.hpp"
 
 void zmq::socket_base_t::inprocs_t::emplace(const char *endpoint_uri_,
                                             pipe_t *pipe_) {
@@ -588,8 +588,8 @@ int zmq::socket_base_t::bind(const char *endpoint_uri_) {
   // FIXME: The implementation of rdma protocol is the same as TCP for now!
 #ifdef ZMQ_HAVE_RDMA
   if (protocol == protocol_name::rdma) {
-    ib_listener_t *listener =
-        new(std::nothrow) ib_listener_t(io_thread, this, options);
+    rdma_listener_t *listener =
+        new(std::nothrow) rdma_listener_t(io_thread, this, options);
     alloc_assert (listener);
     rc = listener->set_address(address.c_str());
     if (rc != 0) {
@@ -1039,7 +1039,7 @@ std::string zmq::socket_base_t::resolve_rdma_addr(std::string endpoint_uri_,
   // resolve before giving up. Given at this stage we don't know whether a
   // socket is connected or bound, try with both.
   if (_endpoints.find(endpoint_uri_) == _endpoints.end()) {
-    ib_address_t *rdma_address = new(std::nothrow) ib_address_t();
+    rdma_address_t *rdma_address = new(std::nothrow) rdma_address_t();
     alloc_assert (rdma_address);
     int rc = rdma_address->resolve(rdma_address_, false, options.ipv6);
 

@@ -34,23 +34,23 @@
 #include "own.hpp"
 #include "stdint.hpp"
 #include "io_object.hpp"
-#include "ib.hpp"
+#include "rdma.hpp"
 
 namespace zmq {
 class io_thread_t;
 class session_base_t;
 struct address_t;
 
-class ib_connecter_t : public own_t, public io_object_t {
+class rdma_connecter_t : public own_t, public io_object_t {
  public:
   //  If 'delayed_start' is true connecter first waits for a while,
   //  then starts connection process.
-  ib_connecter_t(zmq::io_thread_t *io_thread_,
+  rdma_connecter_t(zmq::io_thread_t *io_thread_,
                    zmq::session_base_t *session_,
                    const options_t &options_,
                    address_t *addr_,
                    bool delayed_start_);
-  ~ib_connecter_t();
+  ~rdma_connecter_t();
 
  private:
   //  ID of the timer used to delay the reconnection.
@@ -131,8 +131,8 @@ class ib_connecter_t : public own_t, public io_object_t {
   // Socket
   zmq::socket_base_t *const _socket;
 
-  ib_connecter_t(const ib_connecter_t &);
-  const ib_connecter_t &operator=(const ib_connecter_t &);
+  rdma_connecter_t(const rdma_connecter_t &);
+  const rdma_connecter_t &operator=(const rdma_connecter_t &);
 };
 }
 

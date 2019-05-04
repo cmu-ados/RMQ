@@ -51,8 +51,8 @@
 #include "dish.hpp"
 
 #ifdef ZMQ_HAVE_RDMA
-#include "ib_engine.hpp"
-#include "ib_connecter.hpp"
+#include "rdma_engine.hpp"
+#include "rdma_connecter.hpp"
 #endif
 
 zmq::session_base_t *zmq::session_base_t::create(class io_thread_t *io_thread_,
@@ -445,7 +445,7 @@ void zmq::session_base_t::engine_error(
 
 #ifdef ZMQ_HAVE_RDMA
 void zmq::session_base_t::engine_error(
-    zmq::ib_engine_t::error_reason_t reason_) {
+    zmq::rdma_engine_t::error_reason_t reason_) {
   //  Engine is dead. Let's forget about it.
   _engine = NULL;
 
@@ -453,20 +453,20 @@ void zmq::session_base_t::engine_error(
   if (_pipe)
     clean_pipes();
 
-  zmq_assert (reason_ == ib_engine_t::connection_error
-                  || reason_ == ib_engine_t::timeout_error
-                  || reason_ == ib_engine_t::protocol_error);
+  zmq_assert (reason_ == rdma_engine_t::connection_error
+                  || reason_ == rdma_engine_t::timeout_error
+                  || reason_ == rdma_engine_t::protocol_error);
 
   switch (reason_) {
-    case ib_engine_t::timeout_error:
+    case rdma_engine_t::timeout_error:
       /* FALLTHROUGH */
-    case ib_engine_t::connection_error:
+    case rdma_engine_t::connection_error:
       if (_active) {
         reconnect();
         break;
       }
       /* FALLTHROUGH */
-    case ib_engine_t::protocol_error:
+    case rdma_engine_t::protocol_error:
       if (_pending) {
         if (_pipe)
           _pipe->terminate(false);
@@ -705,7 +705,7 @@ zmq::own_t *zmq::session_base_t::create_connecter_rdma(io_thread_t *io_thread_,
         io_thread_, this, options, _addr, proxy_address, wait_);
   }
   return new(std::nothrow)
-      ib_connecter_t(io_thread_, this, options, _addr, wait_);
+      rdma_connecter_t(io_thread_, this, options, _addr, wait_);
 }
 #endif
 

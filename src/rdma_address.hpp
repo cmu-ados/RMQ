@@ -14,10 +14,10 @@
 #include "ip_resolver.hpp"
 
 namespace zmq {
-class ib_address_t {
+class rdma_address_t {
  public:
-  ib_address_t();
-  ib_address_t(const sockaddr *sa_, socklen_t sa_len_);
+  rdma_address_t();
+  rdma_address_t(const sockaddr *sa_, socklen_t sa_len_);
 
   //  This function translates textual RDMA address into an address
   //  structure. If 'local' is true, names are resolved as local interface

@@ -37,7 +37,7 @@ class ctx_t;
 class tcp_address_t;
 class udp_address_t;
 #ifdef ZMQ_HAVE_RDMA
-class ib_address_t;
+class rdma_address_t;
 #endif
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS
 class ipc_address_t;
@@ -83,7 +83,7 @@ struct address_t {
     void *dummy;
     tcp_address_t *tcp_addr;
 #ifdef ZMQ_HAVE_RDMA
-    ib_address_t *rdma_addr;
+    rdma_address_t *rdma_addr;
 #endif
     udp_address_t *udp_addr;
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS                     \
