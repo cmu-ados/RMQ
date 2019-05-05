@@ -154,26 +154,23 @@ class ib_res_t {
 
   }
 
-  void ib_poll_n(int n, int* qps, char ** recv_bufs, uint32_t * length) {
-    int remind_n = n;
+  int ib_poll_n(int n, int* qps, char ** recv_bufs, uint32_t * length) {
     int buf_index = 0;
     ibv_cq * cq = _cq;
     struct ibv_wc wcs[IB_RECV_NUM];
-    while (remind_n > 0) {
-      int num_wc = remind_n;
-      int n_got = ibv_poll_cq(cq, num_wc, wcs);
-      for (int i = 0; i < n_got; i++) {
-        if (wcs[i].status == IBV_WC_SUCCESS && wcs[i].opcode == IBV_WC_RECV) {
-          recv_bufs[buf_index] = (char*)wcs[i].wr_id;
-          length[buf_index] = wcs[i].byte_len;
-          qps[buf_index] = wcs[i].qp_num;
-          remind_n--;
-          buf_index++;
-          printf("1 Recv to %u completed\n", (unsigned)wcs[i].wr_id);
-        }
-        else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
+    int num_wc = n;
+    int n_got = ibv_poll_cq(cq, num_wc, wcs);
+    for (int i = 0; i < n_got; i++) {
+      if (wcs[i].status == IBV_WC_SUCCESS && wcs[i].opcode == IBV_WC_RECV) {
+        recv_bufs[buf_index] = (char*)wcs[i].wr_id;
+        length[buf_index] = wcs[i].byte_len;
+        qps[buf_index] = wcs[i].qp_num;
+        buf_index++;
+        printf("1 Recv to %u completed\n", (unsigned)wcs[i].wr_id);
       }
+      else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
     }
+    return n_got;
   }
 
   int create_qp() {

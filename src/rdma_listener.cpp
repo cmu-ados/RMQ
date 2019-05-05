@@ -101,7 +101,7 @@ void zmq::rdma_listener_t::in_event() {
 
   int rc = tune_tcp_socket(fd);
   rc = rc
-      | tune_tcp_keepalives(
+       | tune_tcp_keepalives(
           fd, options.tcp_keepalive, options.tcp_keepalive_cnt,
           options.tcp_keepalive_idle, options.tcp_keepalive_intvl);
   rc = rc | tune_tcp_maxrt(fd, options.tcp_maxrt);
@@ -114,7 +114,7 @@ void zmq::rdma_listener_t::in_event() {
   // Create the engine object for this connection.
   ibv_qp *qp = get_ctx()->get_qp(get_ctx()->create_queue_pair());
   zmq_assert (qp != nullptr);
-  ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
+  ibv_context *ctx = get_ctx()->get_ib_res()._ctx;
 
   qp_info_t local_qp_info, remote_qp_info;
 
@@ -160,10 +160,12 @@ void zmq::rdma_listener_t::in_event() {
   assert(port_attr.state == IBV_PORT_ACTIVE);
 
   // FIXME: Test connection, delete it when finished
-  char * rcv_buf[1] = {nullptr};
+  char *rcv_buf[1] = {nullptr};
   uint32_t length[1] = {0};
   int qps[1] = {0};
-  get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+  do {
+    rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+  } while(rc == 0);
   printf("RDMA LISTENER: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
 
 
