@@ -162,8 +162,9 @@ void zmq::rdma_listener_t::in_event() {
   // FIXME: Test connection, delete it when finished
   char * rcv_buf[1] = {nullptr};
   uint32_t length[1] = {0};
-  get_ctx()->get_ib_res().ib_poll_n(1, rcv_buf, length);
-  printf("RDMA LISTENER: Message received %s\n", rcv_buf[0]);
+  int qps[1] = {0};
+  get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+  printf("RDMA LISTENER: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
 
 
   //get_ctx()->destroy_queue_pair(qp);

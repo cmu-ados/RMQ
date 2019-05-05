@@ -102,23 +102,59 @@ class ib_res_t {
   // Here buffer must owned by the qp
   int ib_post_send(int qp_id, char *buf, uint32_t size) {
     ibv_qp * qp = get_qp(qp_id);
+    uint32_t req_size = size;
+    uint32_t lkey = _mr->lkey;
+
     // Here wr_id is set to 0, change if needed
-    post_send(size, _mr->lkey, (uint64_t)buf, qp, buf);
+    struct ibv_send_wr *bad_send_wr;
+    struct ibv_sge list;
+
+    list.addr = (uintptr_t) buf;
+    list.length = req_size;
+    list.lkey = lkey;
+
+    struct ibv_send_wr send_wr;
+    send_wr.wr_id = 0;
+    send_wr.sg_list = &list;
+    send_wr.num_sge = 1;
+    send_wr.opcode = IBV_WR_SEND;
+    send_wr.send_flags = IBV_SEND_SIGNALED;
+
+    int ret = ibv_post_send(qp, &send_wr, &bad_send_wr);
+    assert(ret == 0);
+    return ret;
   }
 
 
   int ib_post_recv(uint32_t size) {
     assert(_rcv_buf_base != nullptr);
-    char * buf_pos = _rcv_buf_base + _rcv_buf_offset;
-    printf("1 Recv posted at %u \n", (uint64_t)buf_pos);
-    post_srq_recv(size, _mr->lkey, (uint64_t)buf_pos, _srq,
-                  buf_pos);
     if (_rcv_buf_offset + size >= (_ib_buf_size / 2))
-      _rcv_buf_offset = 0;
+      _rcv_buf_offset = size;
     else _rcv_buf_offset += size;
+
+    char * buf_pos = _rcv_buf_base + _rcv_buf_offset - size;
+    printf ("_mr->lkey is %lld, _srq is %lld, buf_pos is %lld\n", _mr->lkey, &_srq, buf_pos);
+
+    struct ibv_recv_wr *bad_recv_wr;
+
+    struct ibv_sge list;
+
+    list.addr = (uintptr_t) buf_pos;
+    list.length = size;
+    list.lkey = _mr->lkey;
+
+    struct ibv_recv_wr recv_wr;
+    recv_wr.wr_id = (uint64_t) buf_pos;
+    recv_wr.sg_list = &list;
+    recv_wr.num_sge = 1;
+
+    int ret = ibv_post_srq_recv(_srq, &recv_wr, &bad_recv_wr);
+    printf("1 Recv posted at %u \n", (uint64_t)buf_pos);
+    return ret;
+
   }
 
-  void ib_poll_n(int n, char ** recv_bufs, uint32_t * length) {
+  void ib_poll_n(int n, int* qps, char ** recv_bufs, uint32_t * length) {
     int remind_n = n;
     int buf_index = 0;
     ibv_cq * cq = _cq;
@@ -130,6 +166,7 @@ class ib_res_t {
         if (wcs[i].status == IBV_WC_SUCCESS && wcs[i].opcode == IBV_WC_RECV) {
           recv_bufs[buf_index] = (char*)wcs[i].wr_id;
           length[buf_index] = wcs[i].byte_len;
+          qps[buf_index] = wcs[i].qp_num;
           remind_n--;
           buf_index++;
           printf("1 Recv to %u completed\n", (unsigned)wcs[i].wr_id);
@@ -248,6 +285,7 @@ class ib_res_t {
       zmq_assert(_qp[i] != nullptr);
     }
     ibv_free_device_list(dev_list);
+    printf ("_mr->lkey is %lld, _srq is %lld, buf_pos is %lld\n", _mr->lkey, &_srq, _ib_buf);
     _initalized = true;
   }
 
