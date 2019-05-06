@@ -5,10 +5,12 @@
 #include <vector>
 #include <infiniband/verbs.h>
 #include <arpa/inet.h>
+#include <unordered_map>
 #include "mutex.hpp"
 #include "tcp.hpp"
 
 namespace zmq {
+class rdma_engine_t;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htonll(x) ((1==htonl(1)) ? (x) : (((uint64_t)htonl((x) & 0xFFFFFFFFUL)) << 32) | htonl((uint32_t)((x) >> 32)))
@@ -70,8 +72,25 @@ class ib_res_t {
   typedef std::vector<int> unused_qps_t;
   unused_qps_t _unused_qps;
 
+  // mapping from qpid to engine ptr
+  mutex_t _engine_mapping_sync;
+  std::unordered_map<int, rdma_engine_t *> _engine_mapping;
+
+  // FIXME what if a qp_id is deleted and then reinserted?
+  //       the poller might put outdated messages into the new engine
+  void add_engine(int id, rdma_engine_t *engine) {
+    scoped_lock_t lock(_engine_mapping_sync);
+    _engine_mapping[id] = engine;
+  }
+
+  void remove_engine(int id) {
+    scoped_lock_t lock(_engine_mapping_sync);
+    _engine_mapping.erase(id);
+  }
+
   mutex_t _ib_sync;
   bool _initalized;
+
   ib_res_t()
       : _ctx(nullptr),
         _pd(nullptr),
