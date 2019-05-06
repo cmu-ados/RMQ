@@ -104,38 +104,40 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
   errno_assert (rc == 0);
   rc = _pong_msg.init();
   errno_assert (rc == 0);
+  /*
+   //  Put the socket into non-blocking mode.
+   unblock_socket(_signaler_fd);
 
-  //  Put the socket into non-blocking mode.
-  unblock_socket(_signaler_fd);
+   const int family = get_peer_ip_address(_signaler_fd, _peer_address);
+   if (family == 0)
+     _peer_address.clear();
 
-  const int family = get_peer_ip_address(_signaler_fd, _peer_address);
-  if (family == 0)
-    _peer_address.clear();
-#if defined ZMQ_HAVE_SO_PEERCRED
-  else if (family == PF_UNIX) {
-        struct ucred cred;
-        socklen_t size = sizeof (cred);
-        if (!getsockopt (_signaler_fd, SOL_SOCKET, SO_PEERCRED, &cred, &size)) {
-            std::ostringstream buf;
-            buf << ":" << cred.uid << ":" << cred.gid << ":" << cred.pid;
-            _peer_address += buf.str ();
-        }
-    }
-#elif defined ZMQ_HAVE_LOCAL_PEERCRED
-  else if (family == PF_UNIX) {
-        struct xucred cred;
-        socklen_t size = sizeof (cred);
-        if (!getsockopt (_signaler_fd, 0, LOCAL_PEERCRED, &cred, &size)
-            && cred.cr_version == XUCRED_VERSION) {
-            std::ostringstream buf;
-            buf << ":" << cred.cr_uid << ":";
-            if (cred.cr_ngroups > 0)
-                buf << cred.cr_groups[0];
-            buf << ":";
-            _peer_address += buf.str ();
-        }
-    }
-#endif
+ #if defined ZMQ_HAVE_SO_PEERCRED
+   else if (family == PF_UNIX) {
+         struct ucred cred;
+         socklen_t size = sizeof (cred);
+         if (!getsockopt (_signaler_fd, SOL_SOCKET, SO_PEERCRED, &cred, &size)) {
+             std::ostringstream buf;
+             buf << ":" << cred.uid << ":" << cred.gid << ":" << cred.pid;
+             _peer_address += buf.str ();
+         }
+     }
+ #elif defined ZMQ_HAVE_LOCAL_PEERCRED
+   else if (family == PF_UNIX) {
+         struct xucred cred;
+         socklen_t size = sizeof (cred);
+         if (!getsockopt (_signaler_fd, 0, LOCAL_PEERCRED, &cred, &size)
+             && cred.cr_version == XUCRED_VERSION) {
+             std::ostringstream buf;
+             buf << ":" << cred.cr_uid << ":";
+             if (cred.cr_ngroups > 0)
+                 buf << cred.cr_groups[0];
+             buf << ":";
+             _peer_address += buf.str ();
+         }
+     }
+ #endif
+    */
 
   if (_options.heartbeat_interval > 0) {
     _heartbeat_timeout = _options.heartbeat_timeout;
@@ -148,7 +150,9 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
 zmq::rdma_engine_t::~rdma_engine_t() {
   zmq_assert (!_plugged);
 
+  /*
   if (_signaler_fd != retired_fd) {
+
 #ifdef ZMQ_HAVE_WINDOWS
     int rc = closesocket (_s);
         wsa_assert (rc != SOCKET_ERROR);
@@ -163,7 +167,7 @@ zmq::rdma_engine_t::~rdma_engine_t() {
     errno_assert (rc == 0);
 #endif
     _signaler_fd = retired_fd;
-  }
+  }*/
 
   int rc = _tx_msg.close();
   errno_assert (rc == 0);
