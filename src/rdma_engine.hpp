@@ -79,6 +79,10 @@ class rdma_engine_t : public io_object_t, public i_engine {
   void out_event();
   void timer_event(int id_);
 
+  // rdma specific
+  void rdma_push_msg(char *buf, int len);
+  void rdma_notify();
+
  private:
   //  Unplug the engine from the session.
   void unplug();

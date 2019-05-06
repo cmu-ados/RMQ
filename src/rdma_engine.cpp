@@ -1274,3 +1274,12 @@ int zmq::rdma_engine_t::process_command_message(msg_t *msg_) {
 
   return 0;
 }
+
+void zmq::rdma_engine_t::rdma_push_msg(char *buf, int len) {
+  _recv_pipe.write(std::make_pair(buf, len), false);
+}
+
+void zmq::rdma_engine_t::rdma_notify() {
+  _signaler.send();
+}
+
