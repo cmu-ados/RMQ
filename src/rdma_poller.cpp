@@ -17,6 +17,7 @@ void zmq::rdma_poller_t::loop() {
   std::cout << "entering rdma_poller event loop" << std::endl;
   while (true) {
     // TODO fuck the real shit here
+
   }
 }
 

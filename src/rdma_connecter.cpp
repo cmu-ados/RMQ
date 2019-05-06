@@ -224,6 +224,8 @@ void zmq::rdma_connecter_t::out_event() {
   rdma_engine_t *engine =
       new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint,&(get_ctx()->get_ib_res()), fd);
   alloc_assert (engine);
+  // Register Engine to ib_res
+  get_ctx()->get_ib_res().add_engine(qp_id, engine);
 
   //  Attach the engine to the corresponding session object.
   send_attach(_session, engine);

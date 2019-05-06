@@ -145,9 +145,23 @@ void zmq::rdma_listener_t::in_event() {
   printf("\tqp[%d] <-> qp[%d]\n",
          qp->qp_num, remote_qp_info.qp_num);
 
-  for(int i = 0; i < 100; ++i) {
+
+  // FIXME: Should pass qp_id into rdma_engine, use tcp fd for now
+  rdma_engine_t *engine =
+      new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint, &(get_ctx()->get_ib_res()), fd);
+  alloc_assert (engine);
+
+  // Register Engine to ib_res
+  get_ctx()->get_ib_res().add_engine(qp_id, engine);
+
+  // wait poller to post_recv
+
+  // FIXME: Test connection, delete it when finished
+  int N = 1;
+  for(int i = 0; i < 1; ++i) {
     get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
   }
+
   char buf[300] = {0};
   tcp_read(fd, buf, sizeof("TCP sync"));
   tcp_write(fd, "TCP ack", sizeof("TCP ack"));
@@ -159,19 +173,17 @@ void zmq::rdma_listener_t::in_event() {
   rc = ibv_query_port(ctx, IB_PORT, &port_attr);
   assert(port_attr.state == IBV_PORT_ACTIVE);
 
-  for(int i = 0; i < 1; ++i) {
+  // FIXME: Test connection, delete it when finished
+  for(int i = 0; i < N; ++i) {
     printf("\"RDMA LISTENER: Send QP_ID = %d\n",qp_id);
     char * testmsg = get_ctx()->get_ib_res().ib_reserve_send(qp_id, sizeof("RDMATest"));
     memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
     get_ctx()->get_ib_res().ib_post_send(qp_id, testmsg, sizeof("RDMATest"));
   }
-
-
-  // FIXME: Test connection, delete it when finished
   char *rcv_buf[1] = {nullptr};
   uint32_t length[1] = {0};
   int qps[1] = {0};
-  for(int i = 0; i < 1; ++i) {
+  for(int i = 0; i < N; ++i) {
     do {
       rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
     } while(rc == 0);
@@ -180,10 +192,9 @@ void zmq::rdma_listener_t::in_event() {
 
 
   //get_ctx()->destroy_queue_pair(qp);
-  // FIXME: Should pass qp_id into rdma_engine, use tcp fd for now
-  rdma_engine_t *engine =
-      new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint, &(get_ctx()->get_ib_res()), fd);
-  alloc_assert (engine);
+
+
+
 
   //  Choose I/O thread to run connecter in. Given that we are already
   //  running in an I/O thread, there must be at least one available.

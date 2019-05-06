@@ -72,15 +72,18 @@ class ib_res_t {
   typedef std::vector<int> unused_qps_t;
   unused_qps_t _unused_qps;
 
-  // mapping from qpid to engine ptr
   mutex_t _engine_mapping_sync;
+  // mapping from qpid to engine ptr
   std::unordered_map<int, rdma_engine_t *> _engine_mapping;
+  // mapping from qp_num to qp_id
+  std::unordered_map<int, int> _qp_num_mapping;
 
   // FIXME what if a qp_id is deleted and then reinserted?
   //       the poller might put outdated messages into the new engine
   void add_engine(int id, rdma_engine_t *engine) {
     scoped_lock_t lock(_engine_mapping_sync);
     _engine_mapping[id] = engine;
+    _qp_num_mapping[get_qp(id)->qp_num] = id;
   }
 
   void remove_engine(int id) {
@@ -216,7 +219,6 @@ class ib_res_t {
   }
 
 
-
   void destroy_qp(int qp_id) {
     scoped_lock_t get_ib_sync(_ib_sync);
     assert(_initalized);
@@ -304,6 +306,7 @@ class ib_res_t {
     _qp = (struct ibv_qp **) calloc(_num_qps,
                                     sizeof(struct ibv_qp *));
     _unused_qps.reserve(_num_qps);
+
     zmq_assert(_qp != nullptr);
 
     for (int i = 0; i < _num_qps; i++) {

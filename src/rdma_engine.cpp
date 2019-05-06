@@ -183,7 +183,7 @@ zmq::rdma_engine_t::~rdma_engine_t() {
 
 void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
                               session_base_t *session_) {
-  printf("calling:  zmq::rdma_engine_t::plug\n");
+  //printf("calling:  zmq::rdma_engine_t::plug\n");
   zmq_assert (!_plugged);
   _plugged = true;
 
@@ -289,14 +289,14 @@ void zmq::rdma_engine_t::terminate() {
 }
 
 void zmq::rdma_engine_t::in_event() {
-  printf("calling: void zmq::rdma_engine_t::in_event()\n");
+  //printf("calling: void zmq::rdma_engine_t::in_event()\n");
   zmq_assert (!_io_error);
 
   //  If still handshaking, receive and process the greeting message.
   if (unlikely (_handshaking))
     if (!handshake())
       return;
-  printf("###DEBUG:in_event: _encoder = %llx, _decoder = %llx\n",_encoder,_decoder);
+  //printf("###DEBUG:in_event: _encoder = %llx, _decoder = %llx\n",_encoder,_decoder);
 
   zmq_assert (_decoder);
 
@@ -318,21 +318,17 @@ void zmq::rdma_engine_t::in_event() {
 
     const int rc = tcp_read(_signaler_fd, _inpos, bufsize);
     printf("in_event:tcp_read %d\n",rc);
-
-
     // RDMA receive
-    /*
-    _session->get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
-    char *rcv_buf[1] = {nullptr};
-    uint32_t length[1] = {0};
-    int qps[1] = {0};
-    int rrc;
-    do {
-      rrc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
-    } while(rrc == 0);
-
-    printf("###DEBUG: tcp rc vs rdma rc %d %d\n",rc,rrc);
-    */
+    {
+      char *rcv_buf[1] = {nullptr};
+      uint32_t length[1] = {0};
+      int qps[1] = {0};
+      int rrc;
+        do {
+            rrc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+        }while(rrc == 0);
+      printf("###DEBUG: tcp rc vs rdma rc and length %d %d %d\n",rc,rrc,length[0]);
+    }
 
 
     if (rc == 0) {
@@ -383,28 +379,8 @@ void zmq::rdma_engine_t::in_event() {
 }
 
 void zmq::rdma_engine_t::out_event() {
-  printf("calling: void zmq::rdma_engine_t::out_event()\n");
+  //printf("calling: void zmq::rdma_engine_t::out_event()\n");
   // Send the message thru RDMA
-  {
-    printf("out_event!!!!!!!!!!!!!!!!!!!!!!\n");
-    auto qp = _ib_res->get_qp(_qp_id);
-    struct ibv_qp_attr attr;
-    struct ibv_qp_init_attr init_attr;
-    if (ibv_query_qp(qp, &attr, IBV_QP_STATE, &init_attr)) {
-      printf("Failed to query QP state\n");
-    } else {
-      printf("Query State Success!\n");
-      printf("QP state = %d %d \n",
-          attr.qp_state,attr.cur_qp_state);
-    }
-
-
-    printf("\"RDMA LISTENER: Send QP_ID = %d\n",_qp_id);
-    char * testmsg = _ib_res->ib_reserve_send(_qp_id, sizeof("RDMATest"));
-    memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
-    _ib_res->ib_post_send(_qp_id, testmsg, sizeof("RDMATest"));
-
-  }
 
   zmq_assert (!_io_error);
 
@@ -447,7 +423,13 @@ void zmq::rdma_engine_t::out_event() {
   //  limited transmission buffer and thus the actual number of bytes
   //  written should be reasonably modest.
   const int nbytes = tcp_write(_signaler_fd, _outpos, _outsize);
+
   printf("out_event:tcp_write %d\n",nbytes);
+  {
+    char * testmsg = _ib_res->ib_reserve_send(_qp_id, nbytes);
+    memcpy(testmsg, _outpos, nbytes);
+    _ib_res->ib_post_send(_qp_id, testmsg, nbytes);
+  }
 
 
   //  IO error has occurred. We stop waiting for output events.
@@ -469,7 +451,7 @@ void zmq::rdma_engine_t::out_event() {
 }
 
 void zmq::rdma_engine_t::restart_output() {
-  printf("calling: void zmq::rdma_engine_t::restart_output()\n");
+  //printf("calling: void zmq::rdma_engine_t::restart_output()\n");
   if (unlikely (_io_error))
     return;
 
@@ -486,7 +468,7 @@ void zmq::rdma_engine_t::restart_output() {
 }
 
 bool zmq::rdma_engine_t::restart_input() {
-  printf("calling: bool zmq::rdma_engine_t::restart_input()\n");
+  //printf("calling: bool zmq::rdma_engine_t::restart_input()\n");
   zmq_assert (_input_stopped);
   zmq_assert (_session != NULL);
   zmq_assert (_decoder != NULL);
@@ -539,7 +521,7 @@ bool zmq::rdma_engine_t::restart_input() {
 const size_t revision_pos = 10;
 
 bool zmq::rdma_engine_t::handshake() {
-  printf("calling: bool zmq::rdma_engine_t::handshake()\n");
+  //printf("calling: bool zmq::rdma_engine_t::handshake()\n");
   zmq_assert (_handshaking);
   zmq_assert (_greeting_bytes_read < _greeting_size);
   //  Receive the greeting.
@@ -570,15 +552,13 @@ bool zmq::rdma_engine_t::handshake() {
 }
 
 int zmq::rdma_engine_t::receive_greeting() {
-  printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
+  //printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
   bool unversioned = false;
 
   while (_greeting_bytes_read < _greeting_size) {
     const int n = tcp_read(_signaler_fd, _greeting_recv + _greeting_bytes_read,
                            _greeting_size - _greeting_bytes_read);
     printf("receive_greeting:tcp_read %d\n",n);
-
-
     if (n == 0) {
       errno = EPIPE;
       error(connection_error);
@@ -618,7 +598,7 @@ int zmq::rdma_engine_t::receive_greeting() {
 
   printf("###DEBUG: Receive the greeting with rdma\n");
   // Receive the greeting with rdma
-  /*unsigned int greeting_bytes_read = _greeting_bytes_read;
+  unsigned int greeting_bytes_read = _greeting_bytes_read;
   unsigned char greeting_recv[v3_greeting_size];
 
   while(greeting_bytes_read < _greeting_size) {
@@ -635,17 +615,12 @@ int zmq::rdma_engine_t::receive_greeting() {
 
   printf("###DEBUG: greeting message cmp = %d vs %d %s vs %s\n",
       greeting_bytes_read, _greeting_bytes_read, greeting_recv,_greeting_recv);
-  */
-
-
-
-
 
   return unversioned ? 1 : 0;
 }
 
 void zmq::rdma_engine_t::receive_greeting_versioned() {
-  printf("calling: zmq::rdma_engine_t::receive_greeting_versioned()\n");
+  //printf("calling: zmq::rdma_engine_t::receive_greeting_versioned()\n");
   //  Send the major version number.
   if (_outpos + _outsize == _greeting_send + signature_size) {
     if (_outsize == 0)
@@ -691,7 +666,7 @@ void zmq::rdma_engine_t::receive_greeting_versioned() {
 zmq::rdma_engine_t::handshake_fun_t
 zmq::rdma_engine_t::select_handshake_fun(bool unversioned,
                                          unsigned char revision) {
-  printf("calling: zmq::rdma_engine_t::select_handshake_fun\n");
+  //printf("calling: zmq::rdma_engine_t::select_handshake_fun\n");
   //  Is the peer using ZMTP/1.0 with no revision number?
   if (unversioned) {
     return &rdma_engine_t::handshake_v1_0_unversioned;
@@ -704,7 +679,7 @@ zmq::rdma_engine_t::select_handshake_fun(bool unversioned,
 }
 
 bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
-  printf("calling: zmq::rdma_engine_t::handshake_v1_0_unversioned()\n");
+  //printf("calling: zmq::rdma_engine_t::handshake_v1_0_unversioned()\n");
   //  We send and receive rest of routing id message
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
@@ -757,7 +732,7 @@ bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
 }
 
 bool zmq::rdma_engine_t::handshake_v1_0() {
-  printf("calling: zzmq::rdma_engine_t::handshake_v1_0()\n");
+  //printf("calling: zzmq::rdma_engine_t::handshake_v1_0()\n");
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
     error(protocol_error);
@@ -775,7 +750,7 @@ bool zmq::rdma_engine_t::handshake_v1_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v2_0() {
-  printf("calling: zmq::rdma_engine_t::handshake_v2_0())\n");
+  //printf("calling: zmq::rdma_engine_t::handshake_v2_0())\n");
   if (_session->zap_enabled()) {
     // reject ZMTP 2.0 connections if ZAP is enabled
     error(protocol_error);
@@ -793,7 +768,7 @@ bool zmq::rdma_engine_t::handshake_v2_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v3_0() {
-  printf("calling: zmq::rdma_engine_t::handshake_v3_0()\n");
+  //printf("calling: zmq::rdma_engine_t::handshake_v3_0()\n");
   _encoder = new(std::nothrow) v2_encoder_t(out_batch_size);
   alloc_assert (_encoder);
 
@@ -816,6 +791,7 @@ bool zmq::rdma_engine_t::handshake_v3_0() {
       _mechanism = new(std::nothrow)
           plain_server_t(_session, _peer_address, _options);
     else
+
       _mechanism = new(std::nothrow) plain_client_t(_session, _options);
     alloc_assert (_mechanism);
   }
