@@ -112,7 +112,8 @@ void zmq::rdma_listener_t::in_event() {
 
   // FIXME: Should change to rdma_engine_t
   // Create the engine object for this connection.
-  ibv_qp *qp = get_ctx()->get_qp(get_ctx()->create_queue_pair());
+  int qp_id = get_ctx()->create_queue_pair();
+  ibv_qp *qp = get_ctx()->get_qp(qp_id);
   zmq_assert (qp != nullptr);
   ibv_context *ctx = get_ctx()->get_ib_res()._ctx;
 
@@ -144,35 +145,44 @@ void zmq::rdma_listener_t::in_event() {
   printf("\tqp[%d] <-> qp[%d]\n",
          qp->qp_num, remote_qp_info.qp_num);
 
+  for(int i = 0; i < 1; ++i) {
+    get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
+  }
   char buf[300] = {0};
-
-  // FIXME: Test connection, delete it when finished
-  char rdma_msg[300] = {0};
-  get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
-
   tcp_read(fd, buf, sizeof("TCP sync"));
   tcp_write(fd, "TCP ack", sizeof("TCP ack"));
-
   printf("RDMA LISTENER: RDMA connected\n");
 
+
+  // FIXME: Test connection, delete it when finished
   struct ibv_port_attr port_attr;
   rc = ibv_query_port(ctx, IB_PORT, &port_attr);
   assert(port_attr.state == IBV_PORT_ACTIVE);
+
+  for(int i = 0; i < 1; ++i) {
+    printf("\"RDMA LISTENER: Send QP_ID = %d\n",qp_id);
+    char * testmsg = get_ctx()->get_ib_res().ib_reserve_send(qp_id, sizeof("RDMATest"));
+    memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
+    get_ctx()->get_ib_res().ib_post_send(qp_id, testmsg, sizeof("RDMATest"));
+  }
+
 
   // FIXME: Test connection, delete it when finished
   char *rcv_buf[1] = {nullptr};
   uint32_t length[1] = {0};
   int qps[1] = {0};
-  do {
-    rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
-  } while(rc == 0);
-  printf("RDMA LISTENER: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
+  for(int i = 0; i < 1; ++i) {
+    do {
+      rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+    } while(rc == 0);
+    printf("RDMA LISTENER: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
+  }
 
 
   //get_ctx()->destroy_queue_pair(qp);
-
+  // FIXME: Should pass qp_id into rdma_engine, use tcp fd for now
   rdma_engine_t *engine =
-      new(std::nothrow) rdma_engine_t(fd, options, _endpoint);
+      new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint, &(get_ctx()->get_ib_res()), fd);
   alloc_assert (engine);
 
   //  Choose I/O thread to run connecter in. Given that we are already
@@ -188,6 +198,12 @@ void zmq::rdma_listener_t::in_event() {
   launch_child(session);
   send_attach(session, engine, false);
   _socket->event_accepted(_endpoint, fd);
+
+  printf("NEW THD!!!!!!!!!!!!\n");
+  typedef void* (*THREADFUNCPTR)(void *);
+  pthread_t thread_id;
+  pthread_create(&thread_id, NULL, (THREADFUNCPTR) &rdma_engine_t::out_event, engine);
+  pthread_join(thread_id, NULL);
 }
 
 void zmq::rdma_listener_t::close() {

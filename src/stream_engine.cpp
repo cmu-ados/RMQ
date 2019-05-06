@@ -400,7 +400,7 @@ void zmq::stream_engine_t::out_event() {
 
   //  IO error has occurred. We stop waiting for output events.
   //  The engine is not terminated until we detect input error;
-  //  this is necessary to prevent losing incoming messages.
+  //  this is necessary to prevent lng incoming messages.
   if (nbytes == -1) {
     reset_pollout(_handle);
     return;

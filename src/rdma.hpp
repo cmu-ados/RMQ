@@ -120,6 +120,7 @@ class ib_res_t {
   // Could be race here, should made send/recv critical section
   // Here buffer must owned by the qp
   int ib_post_send(int qp_id, char *buf, uint32_t size) {
+
     ibv_qp * qp = get_qp(qp_id);
     uint32_t req_size = size;
     uint32_t lkey = _mr->lkey;
@@ -137,7 +138,20 @@ class ib_res_t {
     send_wr.sg_list = &list;
     send_wr.num_sge = 1;
     send_wr.opcode = IBV_WR_SEND;
-    send_wr.send_flags = IBV_SEND_SIGNALED;
+    send_wr.send_flags = 0;
+
+    printf("ib_post_send: qp_id = %d qp = %llX buf = %llX size = %u\n",qp_id,(long long)  qp, (long long) buf, size);
+
+
+    struct ibv_qp_attr attr;
+    struct ibv_qp_init_attr init_attr;
+    if (ibv_query_qp(qp, &attr, IBV_QP_STATE, &init_attr)) {
+      printf("Failed to query QP state\n");
+      return -1;
+    } else {
+      printf("Query State Success!\n");
+      printf("QP state = %d %d\n",attr.qp_state,attr.cur_qp_state);
+    }
 
     int ret = ibv_post_send(qp, &send_wr, &bad_send_wr);
     assert(ret == 0);
@@ -189,7 +203,7 @@ class ib_res_t {
       }
       else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
     }
-    return n_got;
+    return buf_index;
   }
 
   int create_qp() {
@@ -289,6 +303,7 @@ class ib_res_t {
     qp_init_attr.cap.max_send_sge = 1;
     qp_init_attr.cap.max_recv_sge = 1;
     qp_init_attr.qp_type = IBV_QPT_RC;
+    qp_init_attr.sq_sig_all = 0;
 
     _qp = (struct ibv_qp **) calloc(_num_qps,
                                     sizeof(struct ibv_qp *));

@@ -63,10 +63,11 @@
 #include "likely.hpp"
 #include "wire.hpp"
 
-zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
-                                  const options_t &options_,
-                                  const std::string &endpoint_) :
-    _s(fd_),
+zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
+                                  const std::string &endpoint_, zmq::ib_res_t *ib_res, fd_t sigaler_fd_) :
+    _ib_res(ib_res),
+    _qp_id(qp_id_),
+    _signaler_fd(sigaler_fd_),
     _handle(static_cast<handle_t> (NULL)),
     _inpos(NULL),
     _insize(0),
@@ -95,22 +96,26 @@ zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
     _has_heartbeat_timer(false),
     _heartbeat_timeout(0),
     _socket(NULL) {
+  // FIXME: signaler fd should set to this value when poller is ready, set to tcp fd for now
+  //_signaler_fd = _signaler.get_fd();
+
+
   int rc = _tx_msg.init();
   errno_assert (rc == 0);
   rc = _pong_msg.init();
   errno_assert (rc == 0);
 
   //  Put the socket into non-blocking mode.
-  unblock_socket(_s);
+  unblock_socket(_signaler_fd);
 
-  const int family = get_peer_ip_address(_s, _peer_address);
+  const int family = get_peer_ip_address(_signaler_fd, _peer_address);
   if (family == 0)
     _peer_address.clear();
 #if defined ZMQ_HAVE_SO_PEERCRED
   else if (family == PF_UNIX) {
         struct ucred cred;
         socklen_t size = sizeof (cred);
-        if (!getsockopt (_s, SOL_SOCKET, SO_PEERCRED, &cred, &size)) {
+        if (!getsockopt (_signaler_fd, SOL_SOCKET, SO_PEERCRED, &cred, &size)) {
             std::ostringstream buf;
             buf << ":" << cred.uid << ":" << cred.gid << ":" << cred.pid;
             _peer_address += buf.str ();
@@ -120,7 +125,7 @@ zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
   else if (family == PF_UNIX) {
         struct xucred cred;
         socklen_t size = sizeof (cred);
-        if (!getsockopt (_s, 0, LOCAL_PEERCRED, &cred, &size)
+        if (!getsockopt (_signaler_fd, 0, LOCAL_PEERCRED, &cred, &size)
             && cred.cr_version == XUCRED_VERSION) {
             std::ostringstream buf;
             buf << ":" << cred.cr_uid << ":";
@@ -137,17 +142,18 @@ zmq::rdma_engine_t::rdma_engine_t(fd_t fd_,
     if (_heartbeat_timeout == -1)
       _heartbeat_timeout = _options.heartbeat_interval;
   }
+
 }
 
 zmq::rdma_engine_t::~rdma_engine_t() {
   zmq_assert (!_plugged);
 
-  if (_s != retired_fd) {
+  if (_signaler_fd != retired_fd) {
 #ifdef ZMQ_HAVE_WINDOWS
     int rc = closesocket (_s);
         wsa_assert (rc != SOCKET_ERROR);
 #else
-    int rc = close(_s);
+    int rc = close(_signaler_fd);
 #if defined(__FreeBSD_kernel__) || defined(__FreeBSD__)
     // FreeBSD may return ECONNRESET on close() under load but this is not
         // an error.
@@ -156,7 +162,7 @@ zmq::rdma_engine_t::~rdma_engine_t() {
 #endif
     errno_assert (rc == 0);
 #endif
-    _s = retired_fd;
+    _signaler_fd = retired_fd;
   }
 
   int rc = _tx_msg.close();
@@ -188,8 +194,10 @@ void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
 
   //  Connect to I/O threads poller object.
   io_object_t::plug(io_thread_);
-  _handle = add_fd(_s);
+  _handle = add_fd(_signaler_fd);
   _io_error = false;
+
+  printf("###DEBUG: _options.raw_socket = %d\n",_options.raw_socket);
 
   if (_options.raw_socket) {
     // no handshaking for raw sock, instantiate raw encoder and decoders
@@ -234,6 +242,7 @@ void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
     _outsize += 8;
     _outpos[_outsize++] = 0x7f;
   }
+
 
   set_pollin(_handle);
   set_pollout(_handle);
@@ -281,12 +290,14 @@ void zmq::rdma_engine_t::terminate() {
 }
 
 void zmq::rdma_engine_t::in_event() {
+
   zmq_assert (!_io_error);
 
   //  If still handshaking, receive and process the greeting message.
   if (unlikely (_handshaking))
     if (!handshake())
       return;
+  printf("###DEBUG:in_event: _encoder = %llx, _decoder = %llx\n",_encoder,_decoder);
 
   zmq_assert (_decoder);
 
@@ -306,7 +317,24 @@ void zmq::rdma_engine_t::in_event() {
     size_t bufsize = 0;
     _decoder->get_buffer(&_inpos, &bufsize);
 
-    const int rc = tcp_read(_s, _inpos, bufsize);
+    const int rc = tcp_read(_signaler_fd, _inpos, bufsize);
+    printf("in_event:tcp_read %d\n",rc);
+
+
+    // RDMA receive
+    /*
+    _session->get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
+    char *rcv_buf[1] = {nullptr};
+    uint32_t length[1] = {0};
+    int qps[1] = {0};
+    int rrc;
+    do {
+      rrc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+    } while(rrc == 0);
+
+    printf("###DEBUG: tcp rc vs rdma rc %d %d\n",rc,rrc);
+    */
+
 
     if (rc == 0) {
       // connection closed by peer
@@ -356,6 +384,20 @@ void zmq::rdma_engine_t::in_event() {
 }
 
 void zmq::rdma_engine_t::out_event() {
+
+  // Send the message thru RDMA
+  {
+    printf("OUTEVENT!!!!!!!!!!!!!!!!!!!!!!\n");
+    long long qp = (long long)_ib_res->get_qp(_qp_id);
+    printf("QP ADDR = %llX\n",qp);
+    printf("###DEBUG:Send the message thru RDMA\n");
+    printf("QP_ID = %d\n",_qp_id);
+    char * testmsg = _ib_res->ib_reserve_send(_qp_id, sizeof("RDMATest"));
+    memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
+    _ib_res->ib_post_send(_qp_id, testmsg, sizeof("RDMATest"));
+    printf("###DEBUG:Send the message thru RDMA DONE\n");
+  }
+
   zmq_assert (!_io_error);
 
   //  If write buffer is empty, try to read new data from the encoder.
@@ -396,7 +438,9 @@ void zmq::rdma_engine_t::out_event() {
   //  arbitrarily large. However, we assume that underlying TCP layer has
   //  limited transmission buffer and thus the actual number of bytes
   //  written should be reasonably modest.
-  const int nbytes = tcp_write(_s, _outpos, _outsize);
+  const int nbytes = tcp_write(_signaler_fd, _outpos, _outsize);
+  printf("out_event:tcp_write %d\n",nbytes);
+
 
   //  IO error has occurred. We stop waiting for output events.
   //  The engine is not terminated until we detect input error;
@@ -516,9 +560,13 @@ bool zmq::rdma_engine_t::handshake() {
 
 int zmq::rdma_engine_t::receive_greeting() {
   bool unversioned = false;
+
   while (_greeting_bytes_read < _greeting_size) {
-    const int n = tcp_read(_s, _greeting_recv + _greeting_bytes_read,
+    const int n = tcp_read(_signaler_fd, _greeting_recv + _greeting_bytes_read,
                            _greeting_size - _greeting_bytes_read);
+    printf("receive_greeting:tcp_read %d\n",n);
+
+
     if (n == 0) {
       errno = EPIPE;
       error(connection_error);
@@ -555,6 +603,32 @@ int zmq::rdma_engine_t::receive_greeting() {
     //  The peer is using versioned protocol.
     receive_greeting_versioned();
   }
+
+  printf("###DEBUG: Receive the greeting with rdma\n");
+  // Receive the greeting with rdma
+  /*unsigned int greeting_bytes_read = _greeting_bytes_read;
+  unsigned char greeting_recv[v3_greeting_size];
+
+  while(greeting_bytes_read < _greeting_size) {
+    char *rcv_buf[1] = {nullptr};
+    uint32_t length[1] = {0};
+    int qps[1] = {0};
+    int rc;
+    do {
+      rc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+    } while(rc == 0);
+    memcpy(greeting_recv + greeting_bytes_read, rcv_buf[0], length[0]);
+    greeting_bytes_read += length[0];
+  }
+
+  printf("###DEBUG: greeting message cmp = %d vs %d %s vs %s\n",
+      greeting_bytes_read, _greeting_bytes_read, greeting_recv,_greeting_recv);
+  */
+
+
+
+
+
   return unversioned ? 1 : 0;
 }
 
@@ -616,6 +690,7 @@ zmq::rdma_engine_t::select_handshake_fun(bool unversioned,
 }
 
 bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
+  printf("###DEBUG: handshake_v1_0_unversioned\n");
   //  We send and receive rest of routing id message
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
@@ -668,6 +743,7 @@ bool zmq::rdma_engine_t::handshake_v1_0_unversioned() {
 }
 
 bool zmq::rdma_engine_t::handshake_v1_0() {
+  printf("###DEBUG: handshake_v1_0\n");
   if (_session->zap_enabled()) {
     // reject ZMTP 1.0 connections if ZAP is enabled
     error(protocol_error);
@@ -685,6 +761,7 @@ bool zmq::rdma_engine_t::handshake_v1_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v2_0() {
+  printf("###DEBUG: handshake_v2_0\n");
   if (_session->zap_enabled()) {
     // reject ZMTP 2.0 connections if ZAP is enabled
     error(protocol_error);
@@ -702,6 +779,7 @@ bool zmq::rdma_engine_t::handshake_v2_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v3_0() {
+  printf("###DEBUG: handshake_v3_0\n");
   _encoder = new(std::nothrow) v2_encoder_t(out_batch_size);
   alloc_assert (_encoder);
 
@@ -1037,7 +1115,7 @@ void zmq::rdma_engine_t::error(error_reason_t reason_) {
     _socket->event_handshake_failed_no_detail(_endpoint, err);
   }
 
-  _socket->event_disconnected(_endpoint, _s);
+  _socket->event_disconnected(_endpoint, _signaler_fd);
   _session->flush();
   _session->engine_error(reason_);
   unplug();
@@ -1061,7 +1139,7 @@ bool zmq::rdma_engine_t::init_properties(properties_t &properties_) {
 
   //  Private property to support deprecated SRCFD
   std::ostringstream stream;
-  stream << static_cast<int> (_s);
+  stream << static_cast<int> (_signaler_fd);
   std::string fd_string = stream.str();
   properties_.ZMQ_MAP_INSERT_OR_EMPLACE (std::string("__fd"),
                                          ZMQ_MOVE(fd_string));

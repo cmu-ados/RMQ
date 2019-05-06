@@ -59,9 +59,11 @@ class rdma_engine_t : public io_object_t, public i_engine {
     timeout_error
   };
 
-  rdma_engine_t(fd_t fd_,
+  rdma_engine_t(int qp_id_,
                 const options_t &options_,
-                const std::string &endpoint_);
+                const std::string &endpoint_,
+                zmq::ib_res_t* ib_res,
+                fd_t signaler_fd_=0);
   ~rdma_engine_t();
 
   //  i_engine interface implementation.
@@ -133,8 +135,13 @@ class rdma_engine_t : public io_object_t, public i_engine {
   int process_heartbeat_message(msg_t *msg_);
   int produce_pong_message(msg_t *msg_);
 
-  //  Underlying socket.
-  fd_t _s;
+  // The underlying qp_id
+  int _qp_id;
+  zmq::ib_res_t *_ib_res;
+
+  //  The signaler fd
+  signaler_t _signaler;
+  fd_t _signaler_fd;
 
   msg_t _tx_msg;
   //  Need to store PING payload for PONG
