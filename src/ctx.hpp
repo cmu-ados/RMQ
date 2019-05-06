@@ -55,6 +55,7 @@ class reaper_t;
 class pipe_t;
 #ifdef ZMQ_HAVE_RDMA
 class rdma_poller_t;
+class rdma_thread_t;
 #endif
 
 //  Information associated with inproc endpoint. Note that endpoint options
@@ -245,11 +246,6 @@ class ctx_t : public thread_ctx_t {
   // Should we use zero copy message decoding in this context?
   bool _zero_copy;
 
-#ifdef ZMQ_HAVE_RDMA
-  int _ib_num_qps;
-  int _ib_buf_size; // will it overflow?
-#endif
-
   ctx_t(const ctx_t &);
   const ctx_t &operator=(const ctx_t &);
 
@@ -273,7 +269,14 @@ class ctx_t : public thread_ctx_t {
   mutex_t _vmci_sync;
 #endif
 
+
 #ifdef ZMQ_HAVE_RDMA
+  int _ib_num_qps;
+  int _ib_buf_size; // will it overflow?
+#endif
+#ifdef ZMQ_HAVE_RDMA
+  rdma_thread_t *_rdma_thread;
+
   friend class rdma_poller_t;
   // RDMA: Infiniband related resources
   ib_res_t _ib_res;
