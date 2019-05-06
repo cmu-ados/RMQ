@@ -96,9 +96,8 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
     _has_heartbeat_timer(false),
     _heartbeat_timeout(0),
     _socket(NULL) {
-  // FIXME: signaler fd should set to this value when poller is ready, set to tcp fd for now
-  //_signaler_fd = _signaler.get_fd();
 
+  _signaler_fd = _signaler.get_fd();
 
   int rc = _tx_msg.init();
   errno_assert (rc == 0);
@@ -316,6 +315,7 @@ void zmq::rdma_engine_t::in_event() {
     size_t bufsize = 0;
     _decoder->get_buffer(&_inpos, &bufsize);
 
+
     const int rc = tcp_read(_signaler_fd, _inpos, bufsize);
     printf("in_event:tcp_read %d\n",rc);
     // RDMA receive
@@ -329,7 +329,6 @@ void zmq::rdma_engine_t::in_event() {
         }while(rrc == 0);
       printf("###DEBUG: tcp rc vs rdma rc and length %d %d %d\n",rc,rrc,length[0]);
     }
-
 
     if (rc == 0) {
       // connection closed by peer
