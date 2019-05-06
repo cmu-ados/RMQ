@@ -140,7 +140,8 @@ class rdma_engine_t : public io_object_t, public i_engine {
   zmq::ib_res_t *_ib_res;
 
   // The queue to receive msgs (buf, size)
-  zmq::ypipe_t<std::pair<char*, int>, 1000> _recv_queue;
+  typedef  zmq::ypipe_t<std::pair<char*, int>, 1000> recv_pipe_t;
+  recv_pipe_t _recv_pipe;
 
   //  The signaler fd
   signaler_t _signaler;
