@@ -98,6 +98,7 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
     _socket(NULL) {
 
   _signaler_fd = _signaler.get_fd();
+  assert(_signaler_fd != retired_fd);
 
   int rc = _tx_msg.init();
   errno_assert (rc == 0);
@@ -288,14 +289,13 @@ void zmq::rdma_engine_t::terminate() {
 }
 
 void zmq::rdma_engine_t::in_event() {
-  //printf("calling: void zmq::rdma_engine_t::in_event()\n");
+
   zmq_assert (!_io_error);
 
   //  If still handshaking, receive and process the greeting message.
   if (unlikely (_handshaking))
     if (!handshake())
       return;
-  //printf("###DEBUG:in_event: _encoder = %llx, _decoder = %llx\n",_encoder,_decoder);
 
   zmq_assert (_decoder);
 
@@ -306,48 +306,10 @@ void zmq::rdma_engine_t::in_event() {
     return;
   }
 
-  //  If there's no data to process in the buffer...
-  if (!_insize) {
-    //  Retrieve the buffer and read as much data as possible.
-    //  Note that buffer can be arbitrarily large. However, we assume
-    //  the underlying TCP layer has fixed buffer size and thus the
-    //  number of bytes read will be always limited.
-    size_t bufsize = 0;
-    _decoder->get_buffer(&_inpos, &bufsize);
+  // resolve the signal
+  _signaler.recv();
 
-
-    const int rc = tcp_read(_signaler_fd, _inpos, bufsize);
-    printf("in_event:tcp_read %d\n",rc);
-    // RDMA receive
-    {
-      char *rcv_buf[1] = {nullptr};
-      uint32_t length[1] = {0};
-      int qps[1] = {0};
-      int rrc;
-        do {
-            rrc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
-        }while(rrc == 0);
-      printf("###DEBUG: tcp rc vs rdma rc and length %d %d %d\n",rc,rrc,length[0]);
-    }
-
-    if (rc == 0) {
-      // connection closed by peer
-      errno = EPIPE;
-      error(connection_error);
-      return;
-    }
-    if (rc == -1) {
-      if (errno != EAGAIN)
-        error(connection_error);
-      return;
-    }
-
-    //  Adjust input size
-    _insize = static_cast<size_t> (rc);
-    // Adjust buffer size to received bytes
-    _decoder->resize_buffer(_insize);
-  }
-
+  //  If there's already some data to process in the buffer...
   int rc = 0;
   size_t processed = 0;
 
@@ -361,6 +323,50 @@ void zmq::rdma_engine_t::in_event() {
     rc = (this->*_process_msg)(_decoder->msg());
     if (rc == -1)
       break;
+  }
+
+  // handle all the messages in the queue
+  for(;;) {
+    //  Retrieve the buffer and read as much data as possible.
+    //  Note that buffer can be arbitrarily large. However, we assume
+    //  the underlying TCP layer has fixed buffer size and thus the
+    //  number of bytes read will be always limited.
+    size_t bufsize = 0;
+    _decoder->get_buffer(&_inpos, &bufsize);
+
+    recv_pair_t recv_pair;
+    const bool res = _recv_pipe.read(&recv_pair);
+
+    if ((int)bufsize < recv_pair.second) {
+      printf("rdma_engine_t::in_event(): Message buffer too small %d vs %d\n",
+             (int)bufsize, recv_pair.second);
+      return;
+    }
+
+    if (!res) {
+      printf("rdma_engine_t::in_event(): No message to receive\n");
+      break;
+    }
+
+    //  Adjust input size
+    _insize = static_cast<size_t> (recv_pair.second);
+
+    // Adjust buffer size to received bytes
+    _decoder->resize_buffer(_insize);
+
+    int rc = 0;
+    size_t processed = 0;
+    while (_insize > 0) {
+      rc = _decoder->decode(_inpos, _insize, processed);
+      zmq_assert (processed <= _insize);
+      _inpos += processed;
+      _insize -= processed;
+      if (rc == 0 || rc == -1)
+        break;
+      rc = (this->*_process_msg)(_decoder->msg());
+      if (rc == -1)
+        break;
+    }
   }
 
   //  Tear down the connection if we have failed to decode input data
@@ -416,31 +422,11 @@ void zmq::rdma_engine_t::out_event() {
     }
   }
 
-  //  If there are any data to write in write buffer, write as much as
-  //  possible to the socket. Note that amount of data to write can be
-  //  arbitrarily large. However, we assume that underlying TCP layer has
-  //  limited transmission buffer and thus the actual number of bytes
-  //  written should be reasonably modest.
-  const int nbytes = tcp_write(_signaler_fd, _outpos, _outsize);
+  printf("out_event:rdma_send %d\n",(int)_outsize);
+  char * testmsg = _ib_res->ib_reserve_send(_qp_id, (int)_outsize);
+  memcpy(testmsg, _outpos, _outsize);
+  int res = _ib_res->ib_post_send(_qp_id, testmsg, _outsize);
 
-  printf("out_event:tcp_write %d\n",nbytes);
-  {
-    char * testmsg = _ib_res->ib_reserve_send(_qp_id, nbytes);
-    memcpy(testmsg, _outpos, nbytes);
-    _ib_res->ib_post_send(_qp_id, testmsg, nbytes);
-  }
-
-
-  //  IO error has occurred. We stop waiting for output events.
-  //  The engine is not terminated until we detect input error;
-  //  this is necessary to prevent losing incoming messages.
-  if (nbytes == -1) {
-    reset_pollout(_handle);
-    return;
-  }
-
-  _outpos += nbytes;
-  _outsize -= nbytes;
 
   //  If we are still handshaking and there are no data
   //  to send, stop polling for output.
@@ -553,7 +539,7 @@ bool zmq::rdma_engine_t::handshake() {
 int zmq::rdma_engine_t::receive_greeting() {
   //printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
   bool unversioned = false;
-
+  /*
   while (_greeting_bytes_read < _greeting_size) {
     const int n = tcp_read(_signaler_fd, _greeting_recv + _greeting_bytes_read,
                            _greeting_size - _greeting_bytes_read);
@@ -593,28 +579,50 @@ int zmq::rdma_engine_t::receive_greeting() {
 
     //  The peer is using versioned protocol.
     receive_greeting_versioned();
+  }*/
+
+  while (_greeting_bytes_read < _greeting_size) {
+
+    recv_pair_t recv_pair;
+    bool res = _recv_pipe.read(&recv_pair);
+
+    if (!res) {
+      printf("rdma_engine_t::receive_greeting(): No message to recv.\n");
+      return -1;
+    }
+
+    if(recv_pair.second <= 0) {
+      printf("rdma_engine_t::receive_greeting(): Invalid message size %d.\n", recv_pair.second);
+      return -1;
+    }
+
+    // copy the received message to the buffer.
+    memcpy(_greeting_recv + _greeting_bytes_read, recv_pair.first, recv_pair.second);
+    _greeting_bytes_read += recv_pair.second;
+
+    //  We have received at least one byte from the peer.
+    //  If the first byte is not 0xff, we know that the
+    //  peer is using unversioned protocol.
+    if (_greeting_recv[0] != 0xff) {
+      unversioned = true;
+      break;
+    }
+
+    if (_greeting_bytes_read < signature_size)
+      continue;
+
+    //  Inspect the right-most bit of the 10th byte (which coincides
+    //  with the 'flags' field if a regular message was sent).
+    //  Zero indicates this is a header of a routing id message
+    //  (i.e. the peer is using the unversioned protocol).
+    if (!(_greeting_recv[9] & 0x01)) {
+      unversioned = true;
+      break;
+    }
+
+    //  The peer is using versioned protocol.
+    receive_greeting_versioned();
   }
-
-  printf("###DEBUG: Receive the greeting with rdma\n");
-  // Receive the greeting with rdma
-  unsigned int greeting_bytes_read = _greeting_bytes_read;
-  unsigned char greeting_recv[v3_greeting_size];
-
-  while(greeting_bytes_read < _greeting_size) {
-    char *rcv_buf[1] = {nullptr};
-    uint32_t length[1] = {0};
-    int qps[1] = {0};
-    int rc;
-    do {
-      rc = _session->get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
-    } while(rc == 0);
-    memcpy(greeting_recv + greeting_bytes_read, rcv_buf[0], length[0]);
-    greeting_bytes_read += length[0];
-  }
-
-  printf("###DEBUG: greeting message cmp = %d vs %d %s vs %s\n",
-      greeting_bytes_read, _greeting_bytes_read, greeting_recv,_greeting_recv);
-
   return unversioned ? 1 : 0;
 }
 
