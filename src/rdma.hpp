@@ -135,6 +135,7 @@ class ib_res_t {
 
     struct ibv_send_wr send_wr;
     memset(&send_wr, 0, sizeof(send_wr));
+
     send_wr.wr_id = 0;
     send_wr.sg_list = &list;
     send_wr.num_sge = 1;
@@ -161,12 +162,14 @@ class ib_res_t {
     struct ibv_recv_wr *bad_recv_wr;
 
     struct ibv_sge list;
+    memset(&list, 0, sizeof(list));
 
     list.addr = (uintptr_t) buf_pos;
     list.length = size;
     list.lkey = _mr->lkey;
 
     struct ibv_recv_wr recv_wr;
+    memset(&recv_wr, 0, sizeof(recv_wr));
     recv_wr.wr_id = (uint64_t) buf_pos;
     recv_wr.sg_list = &list;
     recv_wr.num_sge = 1;
@@ -181,6 +184,7 @@ class ib_res_t {
     int buf_index = 0;
     ibv_cq * cq = _cq;
     struct ibv_wc wcs[IB_RECV_NUM];
+    memset(wcs, 0, sizeof(wcs));
     int num_wc = n;
     int n_got = ibv_poll_cq(cq, num_wc, wcs);
     for (int i = 0; i < n_got; i++) {
@@ -277,6 +281,7 @@ class ib_res_t {
     zmq_assert(_cq != nullptr);
 
     struct ibv_srq_init_attr srq_init_attr;
+    memset(&srq_init_attr, 0, sizeof(srq_init_attr));
 
     srq_init_attr.attr.max_wr = _dev_attr.max_srq_wr;
     srq_init_attr.attr.max_sge = 1;
@@ -284,6 +289,7 @@ class ib_res_t {
     _srq = ibv_create_srq(_pd, &srq_init_attr);
 
     struct ibv_qp_init_attr qp_init_attr;
+    memset(&qp_init_attr, 0, sizeof(qp_init_attr));
 
     qp_init_attr.send_cq = _cq;
     qp_init_attr.recv_cq = _cq;
