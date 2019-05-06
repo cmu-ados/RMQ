@@ -910,8 +910,8 @@ endif ()
 
 if (WITH_RDMA)
     add_definitions(-DZMQ_HAVE_RDMA)
-    list(APPEND cxx-sources rdma_address.hpp rdma_connecter.hpp rdma_engine.hpp rdma_listener.hpp rdma.hpp
-            rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp rdma.cpp)
+    list(APPEND cxx-sources rdma_address.hpp rdma_connecter.hpp rdma_engine.hpp rdma_listener.hpp rdma.hpp rdma_poller.hpp rdma_thread.hpp
+            rdma_address.cpp rdma_connecter.cpp rdma_engine.cpp rdma_listener.cpp rdma.cpp rdma_poller.cpp rdma_thread.cpp)
 endif ()
 
 #-----------------------------------------------------------------------------

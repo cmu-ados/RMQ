@@ -53,6 +53,9 @@ class io_thread_t;
 class socket_base_t;
 class reaper_t;
 class pipe_t;
+#ifdef ZMQ_HAVE_RDMA
+class rdma_poller_t;
+#endif
 
 //  Information associated with inproc endpoint. Note that endpoint options
 //  are registered as well so that the peer can access them without a need
@@ -271,6 +274,7 @@ class ctx_t : public thread_ctx_t {
 #endif
 
 #ifdef ZMQ_HAVE_RDMA
+  friend class rdma_poller_t;
   // RDMA: Infiniband related resources
   ib_res_t _ib_res;
 #endif
