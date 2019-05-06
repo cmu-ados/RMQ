@@ -183,7 +183,7 @@ void zmq::rdma_connecter_t::out_event() {
     assert(ret == 0);
     printf("\tqp[%d] <-> qp[%d]\n", qp->qp_num, remote_qp_info.qp_num);
 
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 100; ++i) {
       get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
     }
 
@@ -230,14 +230,7 @@ void zmq::rdma_connecter_t::out_event() {
 
   //  Shut the connecter down.
   terminate();
-
   _socket->event_connected(_endpoint, fd);
-
-  typedef void* (*THREADFUNCPTR)(void *);
-  pthread_t thread_id;
-  printf("NEW THD!!!!!!!!!!!!\n");
-  pthread_create(&thread_id, NULL, (THREADFUNCPTR) &rdma_engine_t::out_event, engine);
-  pthread_join(thread_id, NULL);
 }
 
 void zmq::rdma_connecter_t::rm_handle() {

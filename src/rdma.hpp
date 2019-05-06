@@ -120,7 +120,6 @@ class ib_res_t {
   // Could be race here, should made send/recv critical section
   // Here buffer must owned by the qp
   int ib_post_send(int qp_id, char *buf, uint32_t size) {
-
     ibv_qp * qp = get_qp(qp_id);
     uint32_t req_size = size;
     uint32_t lkey = _mr->lkey;
@@ -128,12 +127,14 @@ class ib_res_t {
     // Here wr_id is set to 0, change if needed
     struct ibv_send_wr *bad_send_wr;
     struct ibv_sge list;
+    memset(&list, 0, sizeof(list));
 
     list.addr = (uintptr_t) buf;
     list.length = req_size;
     list.lkey = lkey;
 
     struct ibv_send_wr send_wr;
+    memset(&send_wr, 0, sizeof(send_wr));
     send_wr.wr_id = 0;
     send_wr.sg_list = &list;
     send_wr.num_sge = 1;
@@ -141,17 +142,6 @@ class ib_res_t {
     send_wr.send_flags = 0;
 
     printf("ib_post_send: qp_id = %d qp = %llX buf = %llX size = %u\n",qp_id,(long long)  qp, (long long) buf, size);
-
-
-    struct ibv_qp_attr attr;
-    struct ibv_qp_init_attr init_attr;
-    if (ibv_query_qp(qp, &attr, IBV_QP_STATE, &init_attr)) {
-      printf("Failed to query QP state\n");
-      return -1;
-    } else {
-      printf("Query State Success!\n");
-      printf("QP state = %d %d\n",attr.qp_state,attr.cur_qp_state);
-    }
 
     int ret = ibv_post_send(qp, &send_wr, &bad_send_wr);
     assert(ret == 0);

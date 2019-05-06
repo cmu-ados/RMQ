@@ -145,7 +145,7 @@ void zmq::rdma_listener_t::in_event() {
   printf("\tqp[%d] <-> qp[%d]\n",
          qp->qp_num, remote_qp_info.qp_num);
 
-  for(int i = 0; i < 1; ++i) {
+  for(int i = 0; i < 100; ++i) {
     get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
   }
   char buf[300] = {0};
@@ -198,12 +198,6 @@ void zmq::rdma_listener_t::in_event() {
   launch_child(session);
   send_attach(session, engine, false);
   _socket->event_accepted(_endpoint, fd);
-
-  printf("NEW THD!!!!!!!!!!!!\n");
-  typedef void* (*THREADFUNCPTR)(void *);
-  pthread_t thread_id;
-  pthread_create(&thread_id, NULL, (THREADFUNCPTR) &rdma_engine_t::out_event, engine);
-  pthread_join(thread_id, NULL);
 }
 
 void zmq::rdma_listener_t::close() {
