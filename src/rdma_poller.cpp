@@ -33,27 +33,28 @@ int zmq::rdma_poller_t::get_load() const {
   return 1;
 }
 
-#define RDMA_POLL_N 100
+#define RDMA_POLL_N 5
 
 void zmq::rdma_poller_t::loop() {
   std::cout << "entering rdma_poller event loop" << std::endl;
   int npoll = RDMA_POLL_N;
-  char *bufs[RDMA_POLL_N];
-  uint32_t lens[RDMA_POLL_N];
-  int qps[RDMA_POLL_N]; // qp_nums
+  char *bufs[IB_RECV_NUM];
+  uint32_t lens[IB_RECV_NUM];
+  int qps[IB_RECV_NUM]; // qp_nums
 
   while (true) {
     // TODO fuck the real shit here
     scoped_lock_t engine_lock(_ib_res._engine_mapping_sync);
-    for (int i = 0; i < npoll; ++i, npoll--)
+    while(npoll-- > 0)
       _ib_res.ib_post_recv(in_batch_size);
-
-    int n_polled = _ib_res.ib_poll_n(RDMA_POLL_N, qps, bufs, lens);
-    for (int i = 0; i < n_polled; ++i) {
+    std::pair<int,int> pii = _ib_res.ib_poll_n(RDMA_POLL_N, qps, bufs, lens);
+    int n_polled = pii.first;
+    int n_succ = pii.second;
+    for (int i = 0; i < n_succ; ++i) {
       int qp_id = _ib_res._qp_num_mapping[qps[i]];
       rdma_engine_t *engine = _ib_res._engine_mapping[qp_id];
-      engine->rdma_push_msg(bufs[i], lens[i]);
-      engine->rdma_notify();
+      //engine->rdma_push_msg(bufs[i], lens[i]);
+      //engine->rdma_notify();
     }
     npoll += n_polled;
   }

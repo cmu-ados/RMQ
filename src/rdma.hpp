@@ -183,7 +183,7 @@ class ib_res_t {
 
   }
 
-  int ib_poll_n(int n, int* qps, char ** recv_bufs, uint32_t * length) {
+  std::pair<int,int> ib_poll_n(int n, int* qps, char ** recv_bufs, uint32_t * length) {
     int buf_index = 0;
     ibv_cq * cq = _cq;
     struct ibv_wc wcs[IB_RECV_NUM];
@@ -200,7 +200,7 @@ class ib_res_t {
       }
       else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
     }
-    return buf_index;
+    return std::make_pair(n_got, buf_index);
   }
 
   int create_qp() {

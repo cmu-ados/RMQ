@@ -157,10 +157,10 @@ void zmq::rdma_listener_t::in_event() {
   // wait poller to post_recv
 
   // FIXME: Test connection, delete it when finished
-  int N = 1;
+  /*int N = 1;
   for(int i = 0; i < 1; ++i) {
     get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
-  }
+  }*/
 
   char buf[300] = {0};
   tcp_read(fd, buf, sizeof("TCP sync"));
@@ -168,11 +168,11 @@ void zmq::rdma_listener_t::in_event() {
   printf("RDMA LISTENER: RDMA connected\n");
 
 
-  // FIXME: Test connection, delete it when finished
   struct ibv_port_attr port_attr;
   rc = ibv_query_port(ctx, IB_PORT, &port_attr);
   assert(port_attr.state == IBV_PORT_ACTIVE);
 
+  /*
   // FIXME: Test connection, delete it when finished
   for(int i = 0; i < N; ++i) {
     printf("\"RDMA LISTENER: Send QP_ID = %d\n",qp_id);
@@ -188,13 +188,10 @@ void zmq::rdma_listener_t::in_event() {
       rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
     } while(rc == 0);
     printf("RDMA LISTENER: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
-  }
+  }*/
 
 
   //get_ctx()->destroy_queue_pair(qp);
-
-
-
 
   //  Choose I/O thread to run connecter in. Given that we are already
   //  running in an I/O thread, there must be at least one available.

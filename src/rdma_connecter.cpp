@@ -153,70 +153,71 @@ void zmq::rdma_connecter_t::out_event() {
   ibv_qp *qp = get_ctx()->get_qp(qp_id);
   ibv_context * ctx = get_ctx()->get_ib_res()._ctx;
 
-  {
-    zmq_assert (qp != nullptr);
-    qp_info_t local_qp_info, remote_qp_info;
 
-    local_qp_info.lid = get_ctx()->get_ib_res()._port_attr.lid;
-    local_qp_info.qp_num = qp->qp_num;
+  zmq_assert (qp != nullptr);
+  qp_info_t local_qp_info, remote_qp_info;
 
-    int n1, n2;
-    n2 = set_qp_info(fd, &local_qp_info);
-    zmq_assert(n2 == 0);
-    n1 = get_qp_info(fd, &remote_qp_info);
-    zmq_assert(n1 == 0);
+  local_qp_info.lid = get_ctx()->get_ib_res()._port_attr.lid;
+  local_qp_info.qp_num = qp->qp_num;
 
-    printf("IB CONNECTOR: send: (%d, %d) %d %d\n",
-           n1,
-           n2,
-           local_qp_info.lid,
-           local_qp_info.qp_num);
-    printf("IB CONNECTOR: recv: (%d, %d) %d %d\n",
-           n1,
-           n2,
-           remote_qp_info.lid,
-           remote_qp_info.qp_num);
+  int n1, n2;
+  n2 = set_qp_info(fd, &local_qp_info);
+  zmq_assert(n2 == 0);
+  n1 = get_qp_info(fd, &remote_qp_info);
+  zmq_assert(n1 == 0);
 
-    int ret = set_qp_to_rts(qp,
-                            remote_qp_info.qp_num,
-                            remote_qp_info.lid);
-    assert(ret == 0);
-    printf("\tqp[%d] <-> qp[%d]\n", qp->qp_num, remote_qp_info.qp_num);
+  printf("IB CONNECTOR: send: (%d, %d) %d %d\n",
+         n1,
+         n2,
+         local_qp_info.lid,
+         local_qp_info.qp_num);
+  printf("IB CONNECTOR: recv: (%d, %d) %d %d\n",
+         n1,
+         n2,
+         remote_qp_info.lid,
+         remote_qp_info.qp_num);
 
-    for (int i = 0; i < 100; ++i) {
-      get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
-    }
+  int ret = set_qp_to_rts(qp,
+                          remote_qp_info.qp_num,
+                          remote_qp_info.lid);
+  assert(ret == 0);
+  printf("\tqp[%d] <-> qp[%d]\n", qp->qp_num, remote_qp_info.qp_num);
 
-    char buf[300] = {0};
-    tcp_write(fd, "TCP sync", sizeof("TCP sync"));
-    tcp_read(fd, buf, sizeof("TCP ack"));
-    printf("RDMA CONNECTOR: RDMA Connected\n", buf);
+  // FIXME: Test connection, delete it when finished
+  /*for (int i = 0; i < 100; ++i) {
+    get_ctx()->get_ib_res().ib_post_recv(sizeof("RDMATest"));
+  }*/
 
-    struct ibv_port_attr port_attr;
-    int rc = ibv_query_port(ctx, IB_PORT, &port_attr);
-    assert(port_attr.state == IBV_PORT_ACTIVE);
+  char buf[300] = {0};
+  tcp_write(fd, "TCP sync", sizeof("TCP sync"));
+  tcp_read(fd, buf, sizeof("TCP ack"));
+  printf("RDMA CONNECTOR: RDMA Connected\n", buf);
 
-    // FIXME: Test connection, delete it when finished
+  struct ibv_port_attr port_attr;
+  int rc = ibv_query_port(ctx, IB_PORT, &port_attr);
+  assert(port_attr.state == IBV_PORT_ACTIVE);
 
-    for (int i = 0; i < 1; ++i) {
-      printf("\"RDMA CONNECTOR: Send QP_ID = %d\n", qp_id);
-      char *testmsg = get_ctx()->get_ib_res().ib_reserve_send(qp_id, sizeof("RDMATest"));
-      memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
-      get_ctx()->get_ib_res().ib_post_send(qp_id, testmsg, sizeof("RDMATest"));
-    }
-
-
-    // FIXME: Test connection, delete it when finished
-    char *rcv_buf[1] = {nullptr};
-    uint32_t length[1] = {0};
-    int qps[1] = {0};
-    for (int i = 0; i < 1; ++i) {
-      do {
-        rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
-      } while (rc == 0);
-      printf("RDMA CONNECTOR: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
-    }
+  /*
+  // FIXME: Test connection, delete it when finished
+  for (int i = 0; i < 1; ++i) {
+    printf("\"RDMA CONNECTOR: Send QP_ID = %d\n", qp_id);
+    char *testmsg = get_ctx()->get_ib_res().ib_reserve_send(qp_id, sizeof("RDMATest"));
+    memcpy(testmsg, "RDMATest", sizeof("RDMATest"));
+    get_ctx()->get_ib_res().ib_post_send(qp_id, testmsg, sizeof("RDMATest"));
   }
+
+
+  // FIXME: Test connection, delete it when finished
+  char *rcv_buf[1] = {nullptr};
+  uint32_t length[1] = {0};
+  int qps[1] = {0};
+  for (int i = 0; i < 1; ++i) {
+    do {
+      rc = get_ctx()->get_ib_res().ib_poll_n(1, qps, rcv_buf, length);
+    } while (rc == 0);
+    printf("RDMA CONNECTOR: Message for qps %d received %s\n", qps[0], rcv_buf[0]);
+  }
+  */
 
   // get_ctx()->destroy_queue_pair(qp);
 

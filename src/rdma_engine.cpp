@@ -187,7 +187,7 @@ zmq::rdma_engine_t::~rdma_engine_t() {
 
 void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
                               session_base_t *session_) {
-  //printf("calling:  zmq::rdma_engine_t::plug\n");
+  printf("calling:  zmq::rdma_engine_t::plug\n");
   zmq_assert (!_plugged);
   _plugged = true;
 
@@ -293,7 +293,7 @@ void zmq::rdma_engine_t::terminate() {
 }
 
 void zmq::rdma_engine_t::in_event() {
-
+  printf("calling zmq::rdma_engine_t::in_event()\n");
   zmq_assert (!_io_error);
 
   //  If still handshaking, receive and process the greeting message.
@@ -388,7 +388,7 @@ void zmq::rdma_engine_t::in_event() {
 }
 
 void zmq::rdma_engine_t::out_event() {
-  //printf("calling: void zmq::rdma_engine_t::out_event()\n");
+  printf("calling: void zmq::rdma_engine_t::out_event()\n");
   // Send the message thru RDMA
 
   zmq_assert (!_io_error);
@@ -1281,6 +1281,7 @@ int zmq::rdma_engine_t::process_command_message(msg_t *msg_) {
 
 void zmq::rdma_engine_t::rdma_push_msg(char *buf, int len) {
   _recv_pipe.write(std::make_pair(buf, len), false);
+  _recv_pipe.flush();
 }
 
 void zmq::rdma_engine_t::rdma_notify() {
