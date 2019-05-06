@@ -5,16 +5,26 @@
 
 namespace zmq {
 
-class rdma_poller_t: public worker_poller_base_t {
+class rdma_poller_t: public poller_base_t {
  public:
   rdma_poller_t(ctx_t &ctx);
   ~rdma_poller_t();
 
+  void start();
   void stop();
 
+  static void worker_routine(void *arg_);
+  void stop_worker();
+
+  int get_load() const;
+
  private:
+
   void loop();
+  ctx_t &_ctx;
   ib_res_t &_ib_res;
+  //  Handle of the physical thread doing the I/O work.
+  thread_t _worker;
 };
 
 }

@@ -221,7 +221,7 @@ int zmq::ctx_t::shutdown() {
     if (_sockets.empty())
       _reaper->stop();
 #ifdef ZMQ_HAVE_RDMA
-    // _rdma_thread->stop();
+     _rdma_thread->stop();
     _ib_res.close();
 #endif
   }
@@ -353,9 +353,9 @@ bool zmq::ctx_t::start() {
 
 #ifdef ZMQ_HAVE_RDMA
   // create rdma threads here
-//  _rdma_thread = new(std::nothrow) rdma_thread_t(this, 10000);
-//  _rdma_thread->start();
   _ib_res.setup(get(ZMQ_IB_NUM_QPS), get(ZMQ_IB_BUF_SIZE));
+    _rdma_thread = new(std::nothrow) rdma_thread_t(this, 10000);
+  _rdma_thread->start();
 #endif
 
   _starting = false;

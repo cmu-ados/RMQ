@@ -2,6 +2,7 @@
 #include "rdma_thread.hpp"
 #include "rdma_poller.hpp"
 #include "err.hpp"
+#include <iostream>
 
 zmq::rdma_thread_t::rdma_thread_t(zmq::ctx_t *ctx_, uint32_t tid_) :
   object_t(ctx_, tid_) {
