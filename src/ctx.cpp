@@ -90,7 +90,7 @@ zmq::ctx_t::ctx_t() :
 #endif
 #ifdef ZMQ_HAVE_RDMA
   _ib_num_qps = 1;
-  _ib_buf_size = 1024 * 1024 * 100;
+  _ib_buf_size = 1024 * 1024 * 1024;
 #endif
   //  Initialise crypto library, if needed.
   zmq::random_open();

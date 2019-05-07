@@ -52,9 +52,12 @@ void zmq::rdma_poller_t::loop() {
     if (!_running.load()) {
       break;
     }
+    memset(bufs, 0, sizeof(bufs));
+    memset(lens, 0, sizeof(lens));
+    memset(qps, 0, sizeof(qps));
     // TODO fuck the real shit here
     scoped_lock_t engine_lock(_ib_res._engine_mapping_sync);
-    std::pair<int,int> pii = _ib_res.ib_poll_n(RDMA_POLL_N, qps, bufs, lens);
+    std::pair<int,int> pii = _ib_res.ib_poll_n(IB_RECV_NUM, qps, bufs, lens);
     int n_polled = pii.first;
     int n_succ = pii.second;
     for (int i = 0; i < n_succ; ++i) {

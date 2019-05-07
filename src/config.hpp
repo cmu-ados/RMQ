@@ -54,13 +54,13 @@ enum {
   //  So, if there are 10 messages that fit into the batch size, all of
   //  them may be read by a single 'recv' system call, thus avoiding
   //  unnecessary network stack traversals.
-      in_batch_size = 8192,
+      in_batch_size = 10 * 1024 * 1024,
 
   //  Maximal batching size for engines with sending functionality.
   //  So, if there are 10 messages that fit into the batch size, all of
   //  them may be written by a single 'send' system call, thus avoiding
   //  unnecessary network stack traversals.
-      out_batch_size = 8192,
+      out_batch_size = 10 * 1024 * 1024,
 
   //  Maximal delta between high and low watermark.
       max_wm_delta = 1024,

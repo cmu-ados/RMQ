@@ -25,7 +25,7 @@ static inline uint64_t ntohll (uint64_t x) {return x; }
 #define IB_PORT 1
 #define IB_MTU  IBV_MTU_4096
 #define IB_SL 0
-#define IB_RECV_NUM 256
+#define IB_RECV_NUM 1024
 
 class qp_info_t {
 public:

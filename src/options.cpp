@@ -182,7 +182,7 @@ int do_setsockopt_set(const void *const optval_,
 }
 
 // TODO why is 1000 a sensible default?
-const int default_hwm = 1000;
+const int default_hwm = 1000000;
 
 zmq::options_t::options_t() :
     sndhwm(default_hwm),
