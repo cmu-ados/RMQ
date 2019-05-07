@@ -108,9 +108,9 @@ int main(int argc, char *argv[]) {
 
   latency = (double) elapsed / (roundtrip_count * 2);
 
-  printf("message size: %d [B]\n", (int) message_size);
-  printf("roundtrip count: %d\n", (int) roundtrip_count);
-  printf("average latency: %.3f [us]\n", (double) latency);
+  fprintf(stderr,"message size: %d [B]\n", (int) message_size);
+  fprintf(stderr,"roundtrip count: %d\n", (int) roundtrip_count);
+  fprintf(stderr,"average latency: %.3f [us]\n", (double) latency);
 
   rc = zmq_close(s);
   if (rc != 0) {

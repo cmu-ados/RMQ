@@ -8,13 +8,17 @@
 zmq::rdma_poller_t::rdma_poller_t(zmq::ctx_t &ctx):
   poller_base_t(),
   _ctx(ctx),
-  _ib_res(ctx._ib_res) {
+  _ib_res(ctx._ib_res),
+  _running(true)
+  {
   std::cout << "rdma_poller instantiated" << std::endl;
 }
 
 zmq::rdma_poller_t::~rdma_poller_t() {
-  std::cout << "rdma_poller destructed" << std::endl;
+  std::cout << "rdma_poller destructing" << std::endl;
+  _running.store(false);
   stop_worker();
+  std::cout << "rdma_poller destructed" << std::endl;
 }
 
 void zmq::rdma_poller_t::start() {
@@ -45,6 +49,9 @@ void zmq::rdma_poller_t::loop() {
     _ib_res.ib_post_recv(in_batch_size);
   sleep(5);
   while (true) {
+    if (!_running.load()) {
+      break;
+    }
     // TODO fuck the real shit here
     scoped_lock_t engine_lock(_ib_res._engine_mapping_sync);
     std::pair<int,int> pii = _ib_res.ib_poll_n(RDMA_POLL_N, qps, bufs, lens);
@@ -68,5 +75,6 @@ void zmq::rdma_poller_t::loop() {
 }
 
 void zmq::rdma_poller_t::stop() {
+
 }
 

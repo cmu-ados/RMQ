@@ -20,6 +20,7 @@ class rdma_poller_t: public poller_base_t {
 
  private:
 
+  std::atomic<bool> _running;
   void loop();
   ctx_t &_ctx;
   ib_res_t &_ib_res;

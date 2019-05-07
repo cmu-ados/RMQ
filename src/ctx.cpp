@@ -90,7 +90,7 @@ zmq::ctx_t::ctx_t() :
 #endif
 #ifdef ZMQ_HAVE_RDMA
   _ib_num_qps = 1;
-  _ib_buf_size = 1024 * 1024;
+  _ib_buf_size = 1024 * 1024 * 100;
 #endif
   //  Initialise crypto library, if needed.
   zmq::random_open();
@@ -101,6 +101,7 @@ bool zmq::ctx_t::check_tag() {
 }
 
 zmq::ctx_t::~ctx_t() {
+
   //  Check that there are no remaining _sockets.
   zmq_assert (_sockets.empty());
 
@@ -114,6 +115,10 @@ zmq::ctx_t::~ctx_t() {
   for (io_threads_t::size_type i = 0; i != _io_threads.size(); i++) {
     LIBZMQ_DELETE (_io_threads[i]);
   }
+
+#ifdef ZMQ_HAVE_RDMA
+  LIBZMQ_DELETE(_rdma_thread);
+#endif
 
   //  Deallocate the reaper thread object.
   LIBZMQ_DELETE (_reaper);
@@ -354,7 +359,7 @@ bool zmq::ctx_t::start() {
 #ifdef ZMQ_HAVE_RDMA
   // create rdma threads here
   _ib_res.setup(get(ZMQ_IB_NUM_QPS), get(ZMQ_IB_BUF_SIZE));
-    _rdma_thread = new(std::nothrow) rdma_thread_t(this, 10000);
+  _rdma_thread = new(std::nothrow) rdma_thread_t(this, 10000);
   _rdma_thread->start();
 #endif
 

@@ -422,7 +422,6 @@ void zmq::rdma_engine_t::out_event() {
       zmq_assert (_handshaking);
       return;
     }
-
     _outpos = NULL;
     _outsize = _encoder->encode(&_outpos, 0);
 
@@ -445,6 +444,7 @@ void zmq::rdma_engine_t::out_event() {
       return;
     }
   }
+  printf("HAHAHAH!\n");
 
   printf("out_event:rdma_send %d\n",(int)_outsize);
   char * testmsg = _ib_res->ib_reserve_send(_qp_id, (int)_outsize);

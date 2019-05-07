@@ -139,10 +139,10 @@ int main(int argc, char *argv[]) {
   throughput = ((double) message_count / (double) elapsed * 1000000);
   megabits = ((double) throughput * message_size * 8) / 1000000;
 
-  printf("message size: %d [B]\n", (int) message_size);
-  printf("message count: %d\n", (int) message_count);
-  printf("mean throughput: %d [msg/s]\n", (int) throughput);
-  printf("mean throughput: %.3f [Mb/s]\n", (double) megabits);
+  fprintf(stderr,"message size: %d [B]\n", (int) message_size);
+  fprintf(stderr,"message count: %d\n", (int) message_count);
+  fprintf(stderr,"mean throughput: %d [msg/s]\n", (int) throughput);
+  fprintf(stderr,"mean throughput: %.3f [Mb/s]\n", (double) megabits);
 
   rc = zmq_close(s);
   if (rc != 0) {
