@@ -104,6 +104,7 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
   errno_assert (rc == 0);
   rc = _pong_msg.init();
   errno_assert (rc == 0);
+
   /*
    //  Put the socket into non-blocking mode.
    unblock_socket(_signaler_fd);
@@ -250,7 +251,7 @@ void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
   set_pollin(_handle);
   set_pollout(_handle);
   //  Flush all the data that may have been already received downstream.
-  in_event();
+  //in_event();
 }
 
 void zmq::rdma_engine_t::unplug() {
@@ -296,10 +297,18 @@ void zmq::rdma_engine_t::in_event() {
   printf("calling zmq::rdma_engine_t::in_event()\n");
   zmq_assert (!_io_error);
 
+  // resolve the signal
+  int res = _signaler.recv_failable();
+  if (res) {
+    printf("rdma_engine_t::in_event(): failed to receive signal\n");
+  }
+
   //  If still handshaking, receive and process the greeting message.
   if (unlikely (_handshaking))
-    if (!handshake())
+    if (!handshake()) {
       return;
+    }
+
 
   zmq_assert (_decoder);
 
@@ -310,8 +319,7 @@ void zmq::rdma_engine_t::in_event() {
     return;
   }
 
-  // resolve the signal
-  _signaler.recv();
+
 
   //  If there's already some data to process in the buffer...
   int rc = 0;
@@ -339,7 +347,20 @@ void zmq::rdma_engine_t::in_event() {
     _decoder->get_buffer(&_inpos, &bufsize);
 
     recv_pair_t recv_pair;
+
     const bool res = _recv_pipe.read(&recv_pair);
+
+    int dbug_val;
+    const bool dbug_res = _dbug_pipe.read(&dbug_val);
+    printf("FUCK YOU %d %d\n",res ,dbug_res);
+
+    if (!res) {
+      printf("rdma_engine_t::in_event(): No message to receive\n");
+      break;
+    } else {
+      printf("rdma_engine_t::in_event(): message received %llx %d\n",
+             (long long)recv_pair.first,recv_pair.second);
+    }
 
     if ((int)bufsize < recv_pair.second) {
       printf("rdma_engine_t::in_event(): Message buffer too small %d vs %d\n",
@@ -347,13 +368,12 @@ void zmq::rdma_engine_t::in_event() {
       return;
     }
 
-    if (!res) {
-      printf("rdma_engine_t::in_event(): No message to receive\n");
-      break;
-    }
+    // Copy the recv content
+    memcpy(_inpos, recv_pair.first, recv_pair.second);
 
     //  Adjust input size
     _insize = static_cast<size_t> (recv_pair.second);
+
 
     // Adjust buffer size to received bytes
     _decoder->resize_buffer(_insize);
@@ -430,6 +450,12 @@ void zmq::rdma_engine_t::out_event() {
   char * testmsg = _ib_res->ib_reserve_send(_qp_id, (int)_outsize);
   memcpy(testmsg, _outpos, _outsize);
   int res = _ib_res->ib_post_send(_qp_id, testmsg, _outsize);
+
+  if (res == 0) {
+    _outpos += _outsize;
+    _outsize = 0;
+  }
+
 
 
   //  If we are still handshaking and there are no data
@@ -541,58 +567,25 @@ bool zmq::rdma_engine_t::handshake() {
 }
 
 int zmq::rdma_engine_t::receive_greeting() {
-  //printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
+  printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
   bool unversioned = false;
-  /*
-  while (_greeting_bytes_read < _greeting_size) {
-    const int n = tcp_read(_signaler_fd, _greeting_recv + _greeting_bytes_read,
-                           _greeting_size - _greeting_bytes_read);
-    printf("receive_greeting:tcp_read %d\n",n);
-    if (n == 0) {
-      errno = EPIPE;
-      error(connection_error);
-      return -1;
-    }
-    if (n == -1) {
-      if (errno != EAGAIN)
-        error(connection_error);
-      return -1;
-    }
-
-    _greeting_bytes_read += n;
-
-    //  We have received at least one byte from the peer.
-    //  If the first byte is not 0xff, we know that the
-    //  peer is using unversioned protocol.
-    if (_greeting_recv[0] != 0xff) {
-      unversioned = true;
-      break;
-    }
-
-    if (_greeting_bytes_read < signature_size)
-      continue;
-
-    //  Inspect the right-most bit of the 10th byte (which coincides
-    //  with the 'flags' field if a regular message was sent).
-    //  Zero indicates this is a header of a routing id message
-    //  (i.e. the peer is using the unversioned protocol).
-    if (!(_greeting_recv[9] & 0x01)) {
-      unversioned = true;
-      break;
-    }
-
-    //  The peer is using versioned protocol.
-    receive_greeting_versioned();
-  }*/
 
   while (_greeting_bytes_read < _greeting_size) {
 
     recv_pair_t recv_pair;
     bool res = _recv_pipe.read(&recv_pair);
 
+    int dbug_val;
+    const bool dbug_res = _dbug_pipe.read(&dbug_val);
+
+    printf("FUCK YOU %d %d\n",res ,dbug_res);
+
     if (!res) {
       printf("rdma_engine_t::receive_greeting(): No message to recv.\n");
       return -1;
+    } else {
+      printf("rdma_engine_t::receive_greeting(): message received %llx %d\n",
+             (long long)recv_pair.first,recv_pair.second);
     }
 
     if(recv_pair.second <= 0) {
@@ -1280,8 +1273,15 @@ int zmq::rdma_engine_t::process_command_message(msg_t *msg_) {
 }
 
 void zmq::rdma_engine_t::rdma_push_msg(char *buf, int len) {
-  _recv_pipe.write(std::make_pair(buf, len), false);
+  printf("rdma_engine_t::rdma_push_msg(): %llx %u\n",(long long)buf, len);
+  std::pair<char*, int> t = std::make_pair(buf, len);
+  _recv_pipe.write(t, false);
+  printf("rdma_engine_t::rdma_push_msg():FUCK\n");
   _recv_pipe.flush();
+  printf("rdma_engine_t::rdma_push_msg():DONE\n");
+
+  _dbug_pipe.write(1,false);
+  _dbug_pipe.flush();
 }
 
 void zmq::rdma_engine_t::rdma_notify() {
