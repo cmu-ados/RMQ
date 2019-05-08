@@ -165,7 +165,7 @@ void zmq::rdma_connecter_t::out_event() {
   zmq_assert(n2 == 0);
   n1 = get_qp_info(fd, &remote_qp_info);
   zmq_assert(n1 == 0);
-
+#ifdef _DEBUG
   printf("IB CONNECTOR: send: (%d, %d) %d %d\n",
          n1,
          n2,
@@ -176,12 +176,14 @@ void zmq::rdma_connecter_t::out_event() {
          n2,
          remote_qp_info.lid,
          remote_qp_info.qp_num);
-
+#endif
   int ret = set_qp_to_rts(qp,
                           remote_qp_info.qp_num,
                           remote_qp_info.lid);
   assert(ret == 0);
+#ifdef _DEBUG
   printf("\tqp[%d] <-> qp[%d]\n", qp->qp_num, remote_qp_info.qp_num);
+#endif
 
   // FIXME: Test connection, delete it when finished
   /*for (int i = 0; i < 100; ++i) {
@@ -191,7 +193,10 @@ void zmq::rdma_connecter_t::out_event() {
   char buf[300] = {0};
   tcp_write(fd, "TCP sync", sizeof("TCP sync"));
   tcp_read(fd, buf, sizeof("TCP ack"));
+
+#ifdef _DEBUG
   printf("RDMA CONNECTOR: RDMA Connected\n", buf);
+#endif
 
   struct ibv_port_attr port_attr;
   int rc = ibv_query_port(ctx, IB_PORT, &port_attr);

@@ -144,9 +144,9 @@ class ib_res_t {
     send_wr.num_sge = 1;
     send_wr.opcode = IBV_WR_SEND;
     send_wr.send_flags = 0;
-
+#ifdef _DEBUG
     printf("ib_post_send: qp_id = %d qp = %llX buf = %llX size = %u\n",qp_id,(long long)  qp, (long long) buf, size);
-
+#endif
     int ret = ibv_post_send(qp, &send_wr, &bad_send_wr);
     assert(ret == 0);
     return ret;
@@ -160,8 +160,9 @@ class ib_res_t {
     else _rcv_buf_offset += size;
 
     char * buf_pos = _rcv_buf_base + _rcv_buf_offset - size;
+#ifdef _DEBUG
     printf ("_mr->lkey is %lld, _srq is %lld, buf_pos is %lld\n", _mr->lkey, &_srq, buf_pos);
-
+#endif
     struct ibv_recv_wr *bad_recv_wr;
 
     struct ibv_sge list;
@@ -178,7 +179,9 @@ class ib_res_t {
     recv_wr.num_sge = 1;
 
     int ret = ibv_post_srq_recv(_srq, &recv_wr, &bad_recv_wr);
+#ifdef _DEBUG
     printf("1 Recv posted at %u \n", (uint64_t)buf_pos);
+#endif
     return ret;
 
   }
@@ -196,9 +199,15 @@ class ib_res_t {
         length[buf_index] = wcs[i].byte_len;
         qps[buf_index] = wcs[i].qp_num;
         buf_index++;
+#ifdef _DEBUG
         printf("1 Recv to %u completed\n", (unsigned)wcs[i].wr_id);
+#endif
       }
-      else printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
+      else {
+#ifdef _DEBUG
+        printf("Bad Completion! %d %d\n", wcs[i].status, wcs[i].opcode);
+#endif
+      }
     }
     return std::make_pair(n_got, buf_index);
   }
@@ -315,7 +324,9 @@ class ib_res_t {
       zmq_assert(_qp[i] != nullptr);
     }
     ibv_free_device_list(dev_list);
+#ifdef _DEBUG
     printf ("_mr->lkey is %lld, _srq is %lld, buf_pos is %lld\n", _mr->lkey, &_srq, _ib_buf);
+#endif
     _initalized = true;
   }
 

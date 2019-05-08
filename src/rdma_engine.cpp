@@ -105,41 +105,6 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
   rc = _pong_msg.init();
   errno_assert (rc == 0);
 
-  /*
-   //  Put the socket into non-blocking mode.
-   unblock_socket(_signaler_fd);
-
-   const int family = get_peer_ip_address(_signaler_fd, _peer_address);
-   if (family == 0)
-     _peer_address.clear();
-
- #if defined ZMQ_HAVE_SO_PEERCRED
-   else if (family == PF_UNIX) {
-         struct ucred cred;
-         socklen_t size = sizeof (cred);
-         if (!getsockopt (_signaler_fd, SOL_SOCKET, SO_PEERCRED, &cred, &size)) {
-             std::ostringstream buf;
-             buf << ":" << cred.uid << ":" << cred.gid << ":" << cred.pid;
-             _peer_address += buf.str ();
-         }
-     }
- #elif defined ZMQ_HAVE_LOCAL_PEERCRED
-   else if (family == PF_UNIX) {
-         struct xucred cred;
-         socklen_t size = sizeof (cred);
-         if (!getsockopt (_signaler_fd, 0, LOCAL_PEERCRED, &cred, &size)
-             && cred.cr_version == XUCRED_VERSION) {
-             std::ostringstream buf;
-             buf << ":" << cred.cr_uid << ":";
-             if (cred.cr_ngroups > 0)
-                 buf << cred.cr_groups[0];
-             buf << ":";
-             _peer_address += buf.str ();
-         }
-     }
- #endif
-    */
-
   if (_options.heartbeat_interval > 0) {
     _heartbeat_timeout = _options.heartbeat_timeout;
     if (_heartbeat_timeout == -1)
@@ -150,25 +115,6 @@ zmq::rdma_engine_t::rdma_engine_t(int qp_id_, const options_t &options_,
 
 zmq::rdma_engine_t::~rdma_engine_t() {
   zmq_assert (!_plugged);
-
-  /*
-  if (_signaler_fd != retired_fd) {
-
-#ifdef ZMQ_HAVE_WINDOWS
-    int rc = closesocket (_s);
-        wsa_assert (rc != SOCKET_ERROR);
-#else
-    int rc = close(_signaler_fd);
-#if defined(__FreeBSD_kernel__) || defined(__FreeBSD__)
-    // FreeBSD may return ECONNRESET on close() under load but this is not
-        // an error.
-        if (rc == -1 && errno == ECONNRESET)
-            rc = 0;
-#endif
-    errno_assert (rc == 0);
-#endif
-    _signaler_fd = retired_fd;
-  }*/
 
   int rc = _tx_msg.close();
   errno_assert (rc == 0);
@@ -188,7 +134,9 @@ zmq::rdma_engine_t::~rdma_engine_t() {
 
 void zmq::rdma_engine_t::plug(io_thread_t *io_thread_,
                               session_base_t *session_) {
+#ifdef _DEBUG
   printf("calling:  zmq::rdma_engine_t::plug\n");
+#endif
   zmq_assert (!_plugged);
   _plugged = true;
 
@@ -294,13 +242,17 @@ void zmq::rdma_engine_t::terminate() {
 }
 
 void zmq::rdma_engine_t::in_event() {
+#ifdef _DEBUG
   printf("calling zmq::rdma_engine_t::in_event()\n");
+#endif
   zmq_assert (!_io_error);
 
   // resolve the signal
   int res = _signaler.recv_failable();
   if (res) {
+#ifdef _DEBUG
     printf("rdma_engine_t::in_event(): failed to receive signal\n");
+#endif
   }
 
   //  If still handshaking, receive and process the greeting message.
@@ -350,21 +302,23 @@ void zmq::rdma_engine_t::in_event() {
 
     const bool res = _recv_pipe.read(&recv_pair);
 
-    int dbug_val;
-    const bool dbug_res = _dbug_pipe.read(&dbug_val);
-    printf("FUCK YOU %d %d\n",res ,dbug_res);
-
     if (!res) {
+#ifdef _DEBUG
       printf("rdma_engine_t::in_event(): No message to receive\n");
+#endif
       break;
     } else {
+#ifdef _DEBUG
       printf("rdma_engine_t::in_event(): message received %llx %d\n",
              (long long)recv_pair.first,recv_pair.second);
+#endif
     }
 
     if ((int)bufsize < recv_pair.second) {
+#ifdef _DEBUG
       printf("rdma_engine_t::in_event(): Message buffer too small %d vs %d\n",
              (int)bufsize, recv_pair.second);
+#endif
       return;
     }
 
@@ -408,7 +362,9 @@ void zmq::rdma_engine_t::in_event() {
 }
 
 void zmq::rdma_engine_t::out_event() {
+#ifdef _DEBUG
   printf("calling: void zmq::rdma_engine_t::out_event()\n");
+#endif
   // Send the message thru RDMA
 
   zmq_assert (!_io_error);
@@ -444,8 +400,9 @@ void zmq::rdma_engine_t::out_event() {
       return;
     }
   }
-
+#ifdef _DEBUG
   printf("out_event:rdma_send %d\n",(int)_outsize);
+#endif
   char * testmsg = _ib_res->ib_reserve_send(_qp_id, (int)_outsize);
   memcpy(testmsg, _outpos, _outsize);
   int res = _ib_res->ib_post_send(_qp_id, testmsg, _outsize);
@@ -465,7 +422,6 @@ void zmq::rdma_engine_t::out_event() {
 }
 
 void zmq::rdma_engine_t::restart_output() {
-  //printf("calling: void zmq::rdma_engine_t::restart_output()\n");
   if (unlikely (_io_error))
     return;
 
@@ -482,7 +438,6 @@ void zmq::rdma_engine_t::restart_output() {
 }
 
 bool zmq::rdma_engine_t::restart_input() {
-  //printf("calling: bool zmq::rdma_engine_t::restart_input()\n");
   zmq_assert (_input_stopped);
   zmq_assert (_session != NULL);
   zmq_assert (_decoder != NULL);
@@ -566,7 +521,9 @@ bool zmq::rdma_engine_t::handshake() {
 }
 
 int zmq::rdma_engine_t::receive_greeting() {
+#ifdef _DEBUG
   printf("calling: zmq::rdma_engine_t::receive_greeting()\n");
+#endif
   bool unversioned = false;
 
   while (_greeting_bytes_read < _greeting_size) {
@@ -574,17 +531,17 @@ int zmq::rdma_engine_t::receive_greeting() {
     recv_pair_t recv_pair;
     bool res = _recv_pipe.read(&recv_pair);
 
-    int dbug_val;
-    const bool dbug_res = _dbug_pipe.read(&dbug_val);
-
-    printf("FUCK YOU %d %d\n",res ,dbug_res);
 
     if (!res) {
+#ifdef _DEBUG
       printf("rdma_engine_t::receive_greeting(): No message to recv.\n");
+#endif
       return -1;
     } else {
+#ifdef _DEBUG
       printf("rdma_engine_t::receive_greeting(): message received %llx %d\n",
              (long long)recv_pair.first,recv_pair.second);
+#endif
     }
 
     if(recv_pair.second <= 0) {
@@ -753,7 +710,6 @@ bool zmq::rdma_engine_t::handshake_v1_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v2_0() {
-  //printf("calling: zmq::rdma_engine_t::handshake_v2_0())\n");
   if (_session->zap_enabled()) {
     // reject ZMTP 2.0 connections if ZAP is enabled
     error(protocol_error);
@@ -771,7 +727,6 @@ bool zmq::rdma_engine_t::handshake_v2_0() {
 }
 
 bool zmq::rdma_engine_t::handshake_v3_0() {
-  //printf("calling: zmq::rdma_engine_t::handshake_v3_0()\n");
   _encoder = new(std::nothrow) v2_encoder_t(out_batch_size);
   alloc_assert (_encoder);
 
@@ -1272,15 +1227,18 @@ int zmq::rdma_engine_t::process_command_message(msg_t *msg_) {
 }
 
 void zmq::rdma_engine_t::rdma_push_msg(char *buf, int len) {
+#ifdef _DEBUG
   printf("rdma_engine_t::rdma_push_msg(): %llx %u\n",(long long)buf, len);
+#endif
   std::pair<char*, int> t = std::make_pair(buf, len);
   _recv_pipe.write(t, false);
+#ifdef _DEBUG
   printf("rdma_engine_t::rdma_push_msg():FUCK\n");
+#endif
   _recv_pipe.flush();
+#ifdef _DEBUG
   printf("rdma_engine_t::rdma_push_msg():DONE\n");
-
-  _dbug_pipe.write(1,false);
-  _dbug_pipe.flush();
+#endif
 }
 
 void zmq::rdma_engine_t::rdma_notify() {

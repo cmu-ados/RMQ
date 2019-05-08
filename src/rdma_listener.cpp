@@ -127,7 +127,7 @@ void zmq::rdma_listener_t::in_event() {
   zmq_assert(n1 == 0);
   n2 = set_qp_info(fd, &local_qp_info);
   zmq_assert(n2 == 0);
-
+#ifdef _DEBUG
   printf("RDMA LISTENER: send: (%d, %d) %d %d\n",
          n1,
          n2,
@@ -138,17 +138,18 @@ void zmq::rdma_listener_t::in_event() {
          n2,
          remote_qp_info.lid,
          remote_qp_info.qp_num);
-
+#endif
   int ret = set_qp_to_rts(qp,
                           remote_qp_info.qp_num,
                           remote_qp_info.lid);
+#ifdef _DEBUG
   printf("\tqp[%d] <-> qp[%d]\n",
          qp->qp_num, remote_qp_info.qp_num);
-
+#endif
 
   // FIXME: Should pass qp_id into rdma_engine, use tcp fd for now
   rdma_engine_t *engine =
-      new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint, &(get_ctx()->get_ib_res()), fd);
+      new(std::nothrow) rdma_engine_t(qp_id, options, _endpoint, &(get_ctx()->get_ib_res()));
   alloc_assert (engine);
 
   // Register Engine to ib_res
@@ -165,8 +166,9 @@ void zmq::rdma_listener_t::in_event() {
   char buf[300] = {0};
   tcp_read(fd, buf, sizeof("TCP sync"));
   tcp_write(fd, "TCP ack", sizeof("TCP ack"));
+#ifdef _DEBUG
   printf("RDMA LISTENER: RDMA connected\n");
-
+#endif
 
   struct ibv_port_attr port_attr;
   rc = ibv_query_port(ctx, IB_PORT, &port_attr);

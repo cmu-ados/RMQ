@@ -148,7 +148,6 @@ class rdma_engine_t : public io_object_t, public i_engine {
   typedef std::pair<char*, int> recv_pair_t;
   typedef zmq::ypipe_t<recv_pair_t, 1024> recv_pipe_t;
   recv_pipe_t _recv_pipe;
-  zmq::ypipe_t<int, 1024> _dbug_pipe;
 
   //  The signaler fd
   signaler_t _signaler;

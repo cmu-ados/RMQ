@@ -11,14 +11,21 @@ zmq::rdma_poller_t::rdma_poller_t(zmq::ctx_t &ctx):
   _ib_res(ctx._ib_res),
   _running(true)
   {
+#ifdef _DEBUG
   std::cout << "rdma_poller instantiated" << std::endl;
+#endif
 }
 
 zmq::rdma_poller_t::~rdma_poller_t() {
+#ifdef _DEBUG
   std::cout << "rdma_poller destructing" << std::endl;
+#endif
   _running.store(false);
   stop_worker();
+#ifdef _DEBUG
   std::cout << "rdma_poller destructed" << std::endl;
+#endif
+
 }
 
 void zmq::rdma_poller_t::start() {
@@ -40,7 +47,9 @@ int zmq::rdma_poller_t::get_load() const {
 #define RDMA_POLL_N 1024
 
 void zmq::rdma_poller_t::loop() {
+#ifdef _DEBUG
   std::cout << "entering rdma_poller event loop" << std::endl;
+#endif
   int npoll = RDMA_POLL_N;
   char *bufs[IB_RECV_NUM];
   uint32_t lens[IB_RECV_NUM];
@@ -62,14 +71,20 @@ void zmq::rdma_poller_t::loop() {
     int n_succ = pii.second;
     for (int i = 0; i < n_succ; ++i) {
       if(_ib_res._qp_num_mapping.find(qps[i]) == _ib_res._qp_num_mapping.end()) {
-          printf("rdma_poller_t::loop() engine not found %d\n",qps[i]);
+#ifdef _DEBUG
+        printf("rdma_poller_t::loop() engine not found %d\n",qps[i]);
+#endif
           continue;
       }
       int qp_id = _ib_res._qp_num_mapping.at(qps[i]);
       rdma_engine_t *engine = _ib_res._engine_mapping.at(qp_id);
+#ifdef _DEBUG
       printf("rdma_poller_t::loop() recv %llx %u\n",(long long)bufs[i],lens[i]);
+#endif
       engine->rdma_push_msg(bufs[i], lens[i]);
+#ifdef _DEBUG
       printf("rdma_poller_t::loop() notify %llx!\n",(long long) engine);
+#endif
       engine->rdma_notify();
     }
     for(int i = 0; i < n_polled; ++i)
